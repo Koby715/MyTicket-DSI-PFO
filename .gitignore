@@ -1,0 +1,23 @@
+# Fichiers de configuration sensibles
+.env
+DashBoard/php/.env
+
+# Configuration DB si elle contient des mots de passe en dur
+# DashBoard/php/config/db.php
+
+# Dépendances (si vous en avez)
+vendor/
+node_modules/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Logs
+error_log
+access_log
+*.log
+
+# Dossiers temporaires
+tmp/
+temp/
