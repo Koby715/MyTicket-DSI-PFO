@@ -47,11 +47,37 @@ try {
         exit;
     }
 
-    // Récupérer les pièces jointes
-    $stmt = $pdo->prepare("SELECT id, file_name, file_path, uploaded_at FROM attachments WHERE ticket_id = ?");
+    // Récupérer les pièces jointes du ticket (pas celles du rapport)
+    $stmt = $pdo->prepare("SELECT id, file_name, file_path, uploaded_at FROM attachments WHERE ticket_id = ? AND report_id IS NULL");
     $stmt->execute([$ticket_id]);
     $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $ticket['attachments_list'] = $attachments;
+
+    // Récupérer le rapport de résolution s'il existe
+    $stmt = $pdo->prepare("
+        SELECT 
+            r.id,
+            r.report_content,
+            r.agent_id,
+            u.name as agent_name,
+            r.created_at,
+            r.updated_at
+        FROM rapports r
+        LEFT JOIN users u ON r.agent_id = u.id
+        WHERE r.ticket_id = ?
+    ");
+    $stmt->execute([$ticket_id]);
+    $rapport = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($rapport) {
+        // Récupérer les pièces jointes du rapport
+        $stmt = $pdo->prepare("SELECT id, file_name, file_path, uploaded_at FROM attachments WHERE report_id = ? ORDER BY uploaded_at DESC");
+        $stmt->execute([$rapport['id']]);
+        $rapport_attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rapport['attachments'] = $rapport_attachments;
+        
+        $ticket['rapport'] = $rapport;
+    }
 
     echo json_encode(['success' => true, 'data' => $ticket]);
 

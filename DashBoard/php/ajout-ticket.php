@@ -194,7 +194,7 @@
                       <input type="hidden" name="description" id="ticket-description">
                       <br>
                       <div class="mb-3">
-                        <label class="form-label">Pièces jointes</label>
+                        <label class="form-label">Pièces jointes (Optionnel)</label>
                         <input type="file" name="attachments[]" multiple class="form-control">
                       </div>
 

@@ -10,81 +10,81 @@ header('Content-Type: application/json; charset=utf-8');
 require_once 'config/db.php';
 require_once 'config/email-config.php';
 require_once 'lib/SMTPEmailSender.php';
+require_once 'lib/notification-helper.php';
 
 // ============= FONCTION D'ENVOI D'EMAIL =============
 
 // ============= NOUVELLE FONCTION D'ENVOI VIA API OUTLOOK (PYTHON) =============
 
 function sendTicketEmailViaLocalAPI($nom, $email, $reference, $subject, $ticket_id, $token, $uploadedFiles = []) {
-    $apiUrl = 'http://127.0.0.1:8000/send-mail';
-    
-    // 1. Reconstruction du corps HTML (identique à la version SMTP pour garder le design)
-    $emailConfig = require('config/email-config.php');
-    $ticketLink = $emailConfig['app_url'] . '/DashBoard/php/liste-tickets-user.php?token=' . urlencode($token);
-    
-    // Corps du message (HTML compacté)
-    $mailBody = "<!DOCTYPE html><html><body style='font-family: Arial, sans-serif; color: #333;'>
-    <div style='max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px;'>
-        <div style='background: #0066cc; color: white; padding: 10px; text-align: center;'>
-            <h2>✓ Ticket Créé : $reference</h2>
-        </div>
-        <div style='padding: 20px;'>
-            <p>Bonjour <strong>$nom</strong>,</p>
-            <p>Votre ticket a bien été enregistré.</p>
-            <ul>
-                <li><strong>Objet :</strong> $subject</li>
-                <li><strong>Statut :</strong> Nouveau</li>
-            </ul>
-            <p style='text-align: center; margin-top: 30px;'>
-                <a href='$ticketLink' style='background: #0066cc; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Suivre mon Ticket</a>
-            </p>
-        </div>
-        <div style='font-size: 12px; color: #999; text-align: center; margin-top: 20px;'>
-            Ceci est un message automatique.
-        </div>
-    </div>
-    </body></html>";
-
-    // 2. Préparation des pièces jointes (Chemins absolus requis pour Outlook)
-    $absoluteAttachments = [];
-    if (!empty($uploadedFiles)) {
-        // Le dossier d'upload est relatif à ce script : ../../assets/uploads/tickets/
-        $uploadBaseDir = __DIR__ . '/../../assets/uploads/tickets/';
+    try {
+        global $pdo;
+        $apiUrl = 'http://127.0.0.1:8000/send-mail';
+        $emailConfig = require('config/email-config.php');
+        $ticketLink = $emailConfig['app_url'] . '/DashBoard/php/liste-tickets-user.php?token=' . urlencode($token);
         
-        foreach ($uploadedFiles as $file) {
-            $fullPath = realpath($uploadBaseDir . $file['stored']);
-            if ($fullPath && file_exists($fullPath)) {
-                $absoluteAttachments[] = $fullPath;
+        // 1. Récupérer le template 'ticket_created' depuis la BD
+        $stmt = $pdo->prepare("SELECT body FROM notification_templates WHERE event_name = ? AND is_enabled = 1 LIMIT 1");
+        $stmt->execute(['ticket_created']);
+        $templateData = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $templateBody = $templateData['body'] ?? '';
+        
+        // 2. Préparation des variables pour le template
+        $variables = [
+            'customer_name' => $nom,
+            'reference' => $reference,
+            'subject' => $subject,
+            'link' => $ticketLink,
+            'created_date' => date('d/m/Y à H:i'),
+            'sla_time' => 3 // Par défaut 3 jours
+        ];
+        
+        // 3. Rendu du template avec Bootstrap
+        $mailBody = renderEmailTemplate($templateBody, $variables, $emailConfig['app_url']);
+        
+        // 4. Préparation des pièces jointes (Chemins absolus requis pour Outlook)
+        $absoluteAttachments = [];
+        if (!empty($uploadedFiles)) {
+            $uploadBaseDir = __DIR__ . '/../../assets/uploads/tickets/';
+            
+            foreach ($uploadedFiles as $file) {
+                $fullPath = realpath($uploadBaseDir . $file['stored']);
+                if ($fullPath && file_exists($fullPath)) {
+                    $absoluteAttachments[] = $fullPath;
+                }
             }
         }
-    }
 
-    // 3. Construction du Payload JSON
-    $data = [
-        'to' => $email,
-        'subject' => "Ticket Crée [$reference] : $subject",
-        'body' => $mailBody,
-        'is_html' => true,
-        'attachments' => $absoluteAttachments
-    ];
+        // 5. Construction du Payload JSON
+        $data = [
+            'to' => $email,
+            'subject' => "Ticket Crée [$reference] : $subject",
+            'body' => $mailBody,
+            'is_html' => true,
+            'attachments' => $absoluteAttachments
+        ];
 
-    // 4. Appel cURL
-    $ch = curl_init($apiUrl);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    
-    $result = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+        // 6. Appel cURL
+        $ch = curl_init($apiUrl);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
 
-    // 5. Gestion de la réponse
-    if ($httpCode == 200) {
-        return true;
-    } else {
-        // En cas d'échec, on loggue l'erreur mais on ne bloque pas le script
-        error_log("Erreur API Outlook ($httpCode) : " . $result);
+        // 7. Gestion de la réponse
+        if ($httpCode == 200) {
+            return true;
+        } else {
+            error_log("Erreur API Outlook ($httpCode) : " . $result);
+            return false;
+        }
+    } catch (Exception $e) {
+        error_log("Erreur envoi email: " . $e->getMessage());
         return false;
     }
 }
@@ -92,91 +92,48 @@ function sendTicketEmailViaLocalAPI($nom, $email, $reference, $subject, $ticket_
 // ============= ANCIENNE FONCTION D'ENVOI D'EMAIL (Legacy) =============
 
 function sendTicketEmail($nom, $email, $reference, $subject, $ticket_id, $token) {
-    $emailConfig = require('config/email-config.php');
-    
-    $sender = new SMTPEmailSender($emailConfig);
-    
-    // Générer le lien de suivi du ticket
-    $ticketLink = $emailConfig['app_url'] . '/DashBoard/php/liste-tickets-user.php?token=' . urlencode($token);
-    
-    $mailSubject = "Confirmation de création de ticket - $reference";
-    
-    $mailBody = "<!DOCTYPE html>
-<html>
-<head>
-    <meta charset='utf-8'>
-    <style>
-        body { font-family: Arial, sans-serif; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
-        .container { max-width: 600px; margin: 0 auto; background-color: white; }
-        .header { background: linear-gradient(135deg, #0066cc, #004d99); color: white; padding: 30px; text-align: center; }
-        .header h1 { margin: 0; font-size: 24px; }
-        .content { padding: 30px; }
-        .ticket-box { background-color: #f9f9f9; border-left: 4px solid #0066cc; padding: 20px; margin: 20px 0; border-radius: 4px; }
-        .ticket-box p { margin: 10px 0; }
-        .ticket-box strong { color: #0066cc; }
-        .cta-button { 
-            display: inline-block;
-            background-color: #0066cc;
-            color: white;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 4px;
-            margin: 20px 0;
-            font-weight: bold;
+    try {
+        global $pdo;
+        $emailConfig = require('config/email-config.php');
+        $sender = new SMTPEmailSender($emailConfig);
+        
+        // Générer le lien de suivi du ticket
+        $ticketLink = $emailConfig['app_url'] . '/DashBoard/php/liste-tickets-user.php?token=' . urlencode($token);
+        
+        // 1. Récupérer le template 'ticket_created' depuis la BD
+        $stmt = $pdo->prepare("SELECT body FROM notification_templates WHERE event_name = ? AND is_enabled = 1 LIMIT 1");
+        $stmt->execute(['ticket_created']);
+        $templateData = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $templateBody = $templateData['body'] ?? '';
+        
+        // 2. Préparation des variables pour le template
+        $variables = [
+            'customer_name' => $nom,
+            'reference' => $reference,
+            'subject' => $subject,
+            'link' => $ticketLink,
+            'created_date' => date('d/m/Y à H:i'),
+            'sla_time' => 3
+        ];
+        
+        // 3. Rendu du template avec Bootstrap
+        $mailBody = renderEmailTemplate($templateBody, $variables, $emailConfig['app_url']);
+        
+        $mailSubject = "Confirmation de création de ticket - $reference";
+        
+        // Envoyer l'email
+        $success = $sender->sendHTML($email, $nom, $mailSubject, $mailBody);
+        
+        if (!$success) {
+            error_log("Email send error: " . $sender->getError());
         }
-        .cta-button:hover { background-color: #004d99; }
-        .footer { text-align: center; font-size: 12px; color: #999; margin-top: 30px; padding: 20px; border-top: 1px solid #e0e0e0; }
-        .badge { display: inline-block; background-color: #e8f4fd; color: #0066cc; padding: 5px 10px; border-radius: 3px; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class='container'>
-        <div class='header'>
-            <h1>✓ Ticket Créé avec Succès</h1>
-            <p style='margin: 10px 0 0 0; font-size: 16px;'>Votre demande a été enregistrée</p>
-        </div>
         
-        <div class='content'>
-            <p>Bonjour <strong>$nom</strong>,</p>
-            
-            <p>Merci d'avoir soumis votre demande. Voici les détails de votre ticket :</p>
-            
-            <div class='ticket-box'>
-                <p><strong>Numéro de référence :</strong> <span class='badge'>$reference</span></p>
-                <p><strong>Objet :</strong> $subject</p>
-                <p><strong>Date de création :</strong> " . date('d/m/Y à H:i') . "</p>
-                <p><strong>Statut :</strong> Nouveau</p>
-            </div>
-            
-            <p style='text-align: center;'>
-                <a href='$ticketLink' class='cta-button'>→ Suivre mon Ticket</a>
-            </p>
-            
-            <hr style='border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;'>
-            
-            <p>Vous pouvez consulter l'état de votre ticket à tout moment en cliquant sur le lien ci-dessus ou en utilisant votre numéro de référence <strong>$reference</strong>.</p>
-            
-            <p>Notre équipe traitera votre demande dans les meilleurs délais.</p>
-            
-            <p>Cordialement,<br><strong>Service Support - PFO Construction</strong></p>
-        </div>
-        
-        <div class='footer'>
-            <p style='margin: 0;'>Cet email a été envoyé automatiquement. Veuillez ne pas répondre directement à cet email.</p>
-            <p style='margin: 5px 0 0 0;'>Pour toute question, contactez : " . $emailConfig['reply_to'] . "</p>
-        </div>
-    </div>
-</body>
-</html>";
-    
-    // Envoyer l'email
-    $success = $sender->sendHTML($email, $nom, $mailSubject, $mailBody);
-    
-    if (!$success) {
-        error_log("Email send error: " . $sender->getError());
+        return $success;
+    } catch (Exception $e) {
+        error_log("Erreur envoi email: " . $e->getMessage());
+        return false;
     }
-    
-    return $success;
 }
 
 // Initialiser la réponse

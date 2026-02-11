@@ -90,10 +90,10 @@
       <!-- ========================= hero-2 start ========================= -->
       <div class="hero-section hero-style-2">
         <div class="container">
-          <div class="row align-items-end">
+          <div class="row align-items-center">
             <div class="col-lg-6">
               <div class="hero-content-wrapper">
-                <h4 class="wow fadeInUp" data-wow-delay=".2s">Direction du Service Informatique</h4>
+                <h4 class="wow fadeInUp" data-wow-delay=".2s">Département Informatique</h4>
                 <h2 class="mb-30 wow fadeInUp" data-wow-delay=".4s">Gestion de Tickets</h2>
                 <p class="mb-50 wow fadeInUp" data-wow-delay=".6s">Centralisez et suivez toutes vos demandes en un seul endroit. 
                   Créez des tickets en quelques clics et suivez leur progression en temps réel. 
@@ -118,8 +118,8 @@
               </div>
             </div>
             <div class="col-lg-6">
-              <div class="hero-image">
-                <img src="assets/img/hero/hero-2/batiment.jpg" alt="" class="wow fadeInRight" data-wow-delay=".2s">
+                <div class="hero-image">
+                <img src="assets/img/hero/hero-2/ticket-logo.png" alt="Logo Ticket" class="wow fadeInRight img-fluid" data-wow-delay=".2s" style="max-width:800px; width:100%; height:auto; display:block; margin:0 auto;">
               </div>
             </div>
           </div>

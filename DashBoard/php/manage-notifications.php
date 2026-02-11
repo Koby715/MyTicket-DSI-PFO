@@ -36,10 +36,116 @@ try {
     $check = $pdo->query("SELECT COUNT(*) FROM notification_templates");
     if ($check->fetchColumn() == 0) {
         $default_templates = [
-            ['ticket_created', 'Accusé de réception client', 'Confirmation de création de ticket - {reference}', "Bonjour {customer_name},\n\nVotre ticket {reference} a bien été créé.\nObjet : {subject}\n\nVous pouvez le suivre ici : {link}"],
-            ['status_changed', 'Changement de statut', 'Mise à jour de votre ticket - {reference}', "Bonjour {customer_name},\n\nLe statut de votre ticket {reference} est passé à : {status}.\n\nConsulter les détails : {link}"],
-            ['agent_assigned', 'Notification assignation agent', 'Nouveau ticket assigné - {reference}', "Bonjour,\n\nUn nouveau ticket {reference} vous a été assigné.\nObjet : {subject}\nPriorité : {priority}"],
-            ['new_message', 'Nouveau message sur le ticket', 'Nouveau message pour le ticket - {reference}', "Bonjour,\n\nUn nouveau message a été ajouté à votre ticket {reference}.\n\nVoir le message : {link}"]
+            ['ticket_created', 'Accusé de réception client', 'Confirmation de création de ticket - {reference}', 
+"<h2>✅ Ticket créé avec succès</h2>
+<p>Bonjour <strong>{customer_name}</strong>,</p>
+<p>Nous confirmons la réception de votre demande. Votre ticket a bien été enregistré dans notre système et sera traité par notre équipe dans les meilleurs délais.</p>
+
+<div class=\"alert alert-info\">
+    <strong>🆕 Nouveau ticket créé</strong><br>
+    <strong>Ticket :</strong> {reference}
+</div>
+
+<div class=\"info-box\">
+    <strong>Objet :</strong> {subject}<br>
+    <strong>Date de création :</strong> {created_date}<br>
+    <strong>Statut :</strong> Nouveau
+</div>
+
+<p>Vous recevrez des mises à jour régulières sur l'avancement de votre demande. Notre équipe vous contactera si des informations supplémentaires sont nécessaires.</p>
+
+<div style=\"text-align: center;\">
+    <a href=\"{link}\" style=\"display: inline-block; padding: 12px 25px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 4px; font-weight: bold;\">Voir les détails</a>
+</div>
+
+<div class=\"divider\"></div>
+
+<table>
+    <tr style=\"background: #f0f0f0;\">
+        <td><strong>Statut actuel :</strong></td>
+        <td style=\"text-align: right; color: #0066cc; font-weight: bold;\">Nouveau</td>
+    </tr>
+</table>"],
+
+            ['status_changed', 'Changement de statut', 'Mise à jour de votre ticket - {reference}', 
+"<h2>📢 Votre ticket a été mis à jour</h2>
+<p>Bonjour <strong>{customer_name}</strong>,</p>
+<p>Nous vous informons qu'il y a du nouveau concernant votre demande :</p>
+
+<div class=\"alert alert-info\">
+    <strong>🔄 Nouveau statut :</strong> <span style=\"font-size: 16px; font-weight: bold;\">{status}</span><br>
+    <strong>Ticket :</strong> {reference}
+</div>
+
+<div class=\"info-box\">
+    <strong>Objet :</strong> {subject}<br>
+    <strong>Date de mise à jour :</strong> {updated_date}<br>
+    <strong>Dernière mise à jour :</strong> {last_message}
+</div>
+
+<p>Notre équipe de support continue de traiter votre demande avec attention. Vous serez averti dès qu'il y aura une nouvelle évolution.</p>
+
+<div style=\"text-align: center;\">
+    <a href=\"{link}\" class=\"btn btn-block\">Voir les détails</a>
+</div>
+
+<div class=\"divider\"></div>
+
+<table>
+    <tr style=\"background: #f0f0f0;\">
+        <td><strong>Statut actuel :</strong></td>
+        <td style=\"text-align: right; color: #0066cc; font-weight: bold;\">{status}</td>
+    </tr>
+</table>"],
+
+            ['agent_assigned', 'Notification assignation agent', 'Nouveau ticket assigné - {reference}', 
+"<h2>👤 Agent assigné à votre ticket</h2>
+<p>Bonjour <strong>{customer_name}</strong>,</p>
+<p>Votre demande a été attribuée à un agent spécialisé qui assurera son traitement dans les meilleurs délais.</p>
+
+<div class=\"alert alert-success\">
+    <strong>✓ Agent assigné</strong><br>
+    <strong>Nom :</strong> {agent_name}<br>
+    <strong>Spécialité :</strong> {agent_department}
+</div>
+
+<div class=\"info-box\">
+    <strong>Ticket :</strong> {reference}<br>
+    <strong>Objet :</strong> {subject}<br>
+    <strong>Priorité :</strong> <span style=\"color: #ff6b6b; font-weight: bold;\">{priority}</span><br>
+    <strong>Date d'assignment :</strong> {assigned_date}
+</div>
+
+<p><strong>{agent_name}</strong> examinera votre demande et prendra contact avec vous dans les plus brefs délais si des informations supplémentaires sont nécessaires.</p>
+
+<div class=\"divider\"></div>
+
+<p style=\"font-size: 13px; color: #666;\">Un agent dédié signifie une meilleure qualité de service et un suivi plus personnalisé de votre demande.</p>"],
+
+            ['new_message', 'Nouveau message sur le ticket', 'Nouveau message pour le ticket - {reference}', 
+"<h2>💬 Nouveau message reçu</h2>
+<p>Bonjour <strong>{customer_name}</strong>,</p>
+<p>Une nouvelle réponse a été ajoutée à votre ticket. Consultez le message ci-dessous ou accédez à votre espace pour voir la conversation complète.</p>
+
+<div class=\"alert alert-info\">
+    <strong>Message de :</strong> {message_author}<br>
+    <strong>Ticket :</strong> {reference}<br>
+    <strong>Reçu le :</strong> {message_date}
+</div>
+
+<div class=\"info-box\" style=\"background: #fffacd; border-left-color: #ffc107;\">
+    <p style=\"margin: 0; color: #333;\">{message_preview}</p>
+</div>
+
+<p style=\"font-size: 13px; color: #666; font-style: italic;\">Ceci est un aperçu du message. Pour voir le message complet avec les pièces jointes éventuelles, veuillez consulter votre espace client.</p>
+
+<div style=\"text-align: center;\">
+    <a href=\"{link}\" class=\"btn btn-block\">Voir la conversation</a>
+</div>
+
+<div class=\"divider\"></div>
+
+<p>Vous continuerez à recevoir des notifications pour tous les nouveaux messages concernant ce ticket. Merci de votre patience et de votre confiance.</p>"]
         ];
         $stmt = $pdo->prepare("INSERT INTO notification_templates (event_name, description, subject, body) VALUES (?, ?, ?, ?)");
         foreach ($default_templates as $tmpl) {
@@ -53,21 +159,26 @@ try {
 // --- TRAITEMENT DES ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'edit') {
-        try {
-            $id = $_POST['id'];
-            $subject = trim($_POST['subject']);
-            $body = trim($_POST['body']);
-            $is_enabled = isset($_POST['is_enabled']) ? 1 : 0;
+        // Server-side authorization: only ADMIN and SUPERVISOR can edit notification templates
+        if (!in_array($admin_role, ['ADMIN', 'SUPERVISOR'])) {
+            $error = "Vous n'avez pas les droits nécessaires pour modifier les modèles de notification.";
+        } else {
+            try {
+                $id = $_POST['id'];
+                $subject = trim($_POST['subject']);
+                $body = trim($_POST['body']);
+                $is_enabled = isset($_POST['is_enabled']) ? 1 : 0;
 
-            if (!empty($id) && !empty($subject) && !empty($body)) {
-                $stmt = $pdo->prepare("UPDATE notification_templates SET subject = ?, body = ?, is_enabled = ? WHERE id = ?");
-                $stmt->execute([$subject, $body, $is_enabled, $id]);
-                $message = "Modèle de notification mis à jour avec succès !";
-            } else {
-                $error = "Le sujet et le corps du message sont requis.";
+                if (!empty($id) && !empty($subject) && !empty($body)) {
+                    $stmt = $pdo->prepare("UPDATE notification_templates SET subject = ?, body = ?, is_enabled = ? WHERE id = ?");
+                    $stmt->execute([$subject, $body, $is_enabled, $id]);
+                    $message = "Modèle de notification mis à jour avec succès !";
+                } else {
+                    $error = "Le sujet et le corps du message sont requis.";
+                }
+            } catch (PDOException $e) {
+                $error = "Erreur : " . $e->getMessage();
             }
-        } catch (PDOException $e) {
-            $error = "Erreur : " . $e->getMessage();
         }
     }
 }
@@ -242,17 +353,21 @@ try {
                                                     <?php endif; ?>
                                                 </td>
                                                 <td class="text-end pe-4">
-                                                    <button class="action-btn btn-edit" 
-                                                            data-id="<?= $tmpl['id'] ?>" 
-                                                            data-event="<?= htmlspecialchars($tmpl['event_name']) ?>"
-                                                            data-desc="<?= htmlspecialchars($tmpl['description']) ?>"
-                                                            data-subject="<?= htmlspecialchars($tmpl['subject']) ?>"
-                                                            data-body="<?= htmlspecialchars($tmpl['body']) ?>"
-                                                            data-active="<?= $tmpl['is_enabled'] ?>"
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#editModal">
-                                                        <i class="ti ti-edit"></i>
-                                                    </button>
+                                                    <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                                                        <button class="action-btn btn-edit" 
+                                                                data-id="<?= $tmpl['id'] ?>" 
+                                                                data-event="<?= htmlspecialchars($tmpl['event_name']) ?>"
+                                                                data-desc="<?= htmlspecialchars($tmpl['description']) ?>"
+                                                                data-subject="<?= htmlspecialchars($tmpl['subject']) ?>"
+                                                                data-body="<?= htmlspecialchars($tmpl['body']) ?>"
+                                                                data-active="<?= $tmpl['is_enabled'] ?>"
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#editModal">
+                                                            <i class="ti ti-edit"></i>
+                                                        </button>
+                                                    <?php else: ?>
+                                                        <button class="action-btn" disabled title="Lecture seule"><i class="ti ti-eye"></i></button>
+                                                    <?php endif; ?>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -297,7 +412,11 @@ try {
                     </div>
                     <div class="modal-footer border-0 pb-4 px-4">
                         <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4">Enregistrer les modifications</button>
+                        <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">Enregistrer les modifications</button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>

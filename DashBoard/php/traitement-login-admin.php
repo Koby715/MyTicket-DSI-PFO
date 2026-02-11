@@ -21,7 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         // Rechercher l'utilisateur avec le rôle ADMIN, AGENT ou SUPERVISOR (selon les besoins du dashboard admin)
         // Ici on filtre uniquement pour l'accès administratif
-        $stmt = $pdo->prepare("SELECT id, name, email, password, role, is_active FROM users WHERE email = ? AND role IN ('ADMIN', 'SUPERVISOR') LIMIT 1");
+        // Allow AGENT role to access the dashboard with read-only rights
+        $stmt = $pdo->prepare("SELECT id, name, email, password, role, is_active FROM users WHERE email = ? AND role IN ('ADMIN', 'SUPERVISOR', 'AGENT') LIMIT 1");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
@@ -43,15 +44,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['admin_email'] = $user['email'];
 
                 // Rediriger vers le dashboard
-                header("Location: admin-dashboard.php");
+                header("Location: admin-dashboard-new.php");
                 exit;
-            } else {
+            }
+            else {
                 $_SESSION['login_error'] = "Identifiants invalides.";
                 $_SESSION['old_email'] = $email;
                 header("Location: admin-login.php");
                 exit;
             }
-        } else {
+        }
+        else {
             // Utilisateur non trouvé ou mauvais rôle
             $_SESSION['login_error'] = "Identifiants invalides ou accès non autorisé.";
             $_SESSION['old_email'] = $email;
@@ -59,13 +62,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-    } catch (PDOException $e) {
+    }
+    catch (PDOException $e) {
         error_log("Erreur Login Admin: " . $e->getMessage());
         $_SESSION['login_error'] = "Une erreur technique est survenue.";
         header("Location: admin-login.php");
         exit;
     }
-} else {
+}
+else {
     header("Location: admin-login.php");
     exit;
 }

@@ -21,3 +21,14 @@ access_log
 # Dossiers temporaires
 tmp/
 temp/
+
+# Fichiers de backup et tests
+*.bak
+*.tmp
+Test/
+test.php
+DashBoard/php/test_write.php
+
+# Dossiers d'uploads (fichiers utilisateurs)
+assets/uploads/
+DashBoard/assets/uploads/

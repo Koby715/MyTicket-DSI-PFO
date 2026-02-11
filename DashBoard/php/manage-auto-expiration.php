@@ -44,26 +44,31 @@ try {
 // --- TRAITEMENT DES ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'update_settings') {
-        try {
-            $pdo->beginTransaction();
-            
-            $settings = [
-                'auto_close_enabled' => isset($_POST['auto_close_enabled']) ? '1' : '0',
-                'auto_close_days' => intval($_POST['auto_close_days']),
-                'auto_close_status_from' => intval($_POST['auto_close_status_from']),
-                'auto_close_status_to' => intval($_POST['auto_close_status_to'])
-            ];
+        // Server-side authorization: only ADMIN and SUPERVISOR can modify settings
+        if (!in_array($admin_role, ['ADMIN', 'SUPERVISOR'])) {
+            $error = "Vous n'avez pas les droits nécessaires pour modifier ces paramètres.";
+        } else {
+            try {
+                $pdo->beginTransaction();
+                
+                $settings = [
+                    'auto_close_enabled' => isset($_POST['auto_close_enabled']) ? '1' : '0',
+                    'auto_close_days' => intval($_POST['auto_close_days']),
+                    'auto_close_status_from' => intval($_POST['auto_close_status_from']),
+                    'auto_close_status_to' => intval($_POST['auto_close_status_to'])
+                ];
 
-            foreach ($settings as $key => $value) {
-                $stmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = ?");
-                $stmt->execute([$value, $key]);
+                foreach ($settings as $key => $value) {
+                    $stmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = ?");
+                    $stmt->execute([$value, $key]);
+                }
+
+                $pdo->commit();
+                $message = "Paramètres d'expiration auto. mis à jour avec succès !";
+            } catch (PDOException $e) {
+                $pdo->rollBack();
+                $error = "Erreur : " . $e->getMessage();
             }
-
-            $pdo->commit();
-            $message = "Paramètres d'expiration auto. mis à jour avec succès !";
-        } catch (PDOException $e) {
-            $pdo->rollBack();
-            $error = "Erreur : " . $e->getMessage();
         }
     }
 }
@@ -184,6 +189,13 @@ try {
                 </div>
             <?php endif; ?>
 
+            <?php if ($error): ?>
+                <div class="alert alert-danger alert-dismissible show border-0 shadow-sm" role="alert">
+                    <i class="ti ti-alert-circle me-2"></i> <?= $error ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endif; ?>
+
             <div class="row justify-content-center">
                 <div class="col-xl-8">
                     <div class="card settings-card shadow-sm p-4">
@@ -235,7 +247,11 @@ try {
                                 </div>
 
                                 <div class="col-12 mt-5">
-                                    <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill shadow">Enregistrer les paramètres</button>
+                                    <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                                        <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill shadow">Enregistrer les paramètres</button>
+                                    <?php else: ?>
+                                        <button type="button" class="btn btn-secondary btn-lg w-100 rounded-pill shadow" disabled>Lecture seule — pas d'accès en écriture</button>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </form>

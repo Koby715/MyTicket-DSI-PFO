@@ -25,68 +25,73 @@ $role_filter = isset($_GET['role']) ? $_GET['role'] : '';
 // --- TRAITEMENT DES ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
-        try {
-            if ($_POST['action'] === 'add') {
-                $name = trim($_POST['name']);
-                $email = trim($_POST['email']);
-                $password = $_POST['password'];
-                $role = $_POST['role'];
-                $is_active = isset($_POST['is_active']) ? 1 : 0;
+        // Server-side authorization: only ADMIN and SUPERVISOR can modify users
+        if (!in_array($admin_role, ['ADMIN', 'SUPERVISOR'])) {
+            $error = "Vous n'avez pas les droits nécessaires pour gérer les utilisateurs.";
+        } else {
+            try {
+                if ($_POST['action'] === 'add') {
+                    $name = trim($_POST['name']);
+                    $email = trim($_POST['email']);
+                    $password = $_POST['password'];
+                    $role = $_POST['role'];
+                    $is_active = isset($_POST['is_active']) ? 1 : 0;
 
-                if (!empty($name) && !empty($email) && !empty($password)) {
-                    // Vérifier si l'email existe déjà
-                    $check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ?");
-                    $check->execute([$email]);
-                    if ($check->fetchColumn() > 0) {
-                        $error = "Cet email est déjà utilisé par un autre utilisateur.";
+                    if (!empty($name) && !empty($email) && !empty($password)) {
+                        // Vérifier si l'email existe déjà
+                        $check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ?");
+                        $check->execute([$email]);
+                        if ($check->fetchColumn() > 0) {
+                            $error = "Cet email est déjà utilisé par un autre utilisateur.";
+                        } else {
+                            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                            $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, is_active) VALUES (?, ?, ?, ?, ?)");
+                            $stmt->execute([$name, $email, $hashed_password, $role, $is_active]);
+                            $message = "Utilisateur ajouté avec succès !";
+                        }
                     } else {
-                        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                        $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, is_active) VALUES (?, ?, ?, ?, ?)");
-                        $stmt->execute([$name, $email, $hashed_password, $role, $is_active]);
-                        $message = "Utilisateur ajouté avec succès !";
+                        $error = "Tous les champs obligatoires doivent être remplis.";
                     }
-                } else {
-                    $error = "Tous les champs obligatoires doivent être remplis.";
-                }
-            } elseif ($_POST['action'] === 'edit') {
-                $id = $_POST['id'];
-                $name = trim($_POST['name']);
-                $email = trim($_POST['email']);
-                $role = $_POST['role'];
-                $is_active = isset($_POST['is_active']) ? 1 : 0;
+                } elseif ($_POST['action'] === 'edit') {
+                    $id = $_POST['id'];
+                    $name = trim($_POST['name']);
+                    $email = trim($_POST['email']);
+                    $role = $_POST['role'];
+                    $is_active = isset($_POST['is_active']) ? 1 : 0;
 
-                if (!empty($id) && !empty($name) && !empty($email)) {
-                    // Mise à jour des infos de base
-                    $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, role = ?, is_active = ? WHERE id = ?");
-                    $stmt->execute([$name, $email, $role, $is_active, $id]);
+                    if (!empty($id) && !empty($name) && !empty($email)) {
+                        // Mise à jour des infos de base
+                        $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, role = ?, is_active = ? WHERE id = ?");
+                        $stmt->execute([$name, $email, $role, $is_active, $id]);
 
-                    // Mise à jour du mot de passe si renseigné
-                    if (!empty($_POST['password'])) {
-                        $hashed_password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-                        $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
-                        $stmt->execute([$hashed_password, $id]);
+                        // Mise à jour du mot de passe si renseigné
+                        if (!empty($_POST['password'])) {
+                            $hashed_password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+                            $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+                            $stmt->execute([$hashed_password, $id]);
+                        }
+                        $message = "Utilisateur mis à jour avec succès !";
                     }
-                    $message = "Utilisateur mis à jour avec succès !";
-                }
-            } elseif ($_POST['action'] === 'delete') {
-                $id = $_POST['id'];
-                if ($id == $admin_id) {
-                    $error = "Vous ne pouvez pas supprimer votre propre compte.";
-                } else {
-                    // Vérifier si l'utilisateur a des tickets assignés
-                    $check = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE assigned_to = ?");
-                    $check->execute([$id]);
-                    if ($check->fetchColumn() > 0) {
-                        $error = "Impossible de supprimer cet utilisateur car il a des tickets assignés. Désactivez-le plutôt.";
+                } elseif ($_POST['action'] === 'delete') {
+                    $id = $_POST['id'];
+                    if ($id == $admin_id) {
+                        $error = "Vous ne pouvez pas supprimer votre propre compte.";
                     } else {
-                        $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
-                        $stmt->execute([$id]);
-                        $message = "Utilisateur supprimé avec succès !";
+                        // Vérifier si l'utilisateur a des tickets assignés
+                        $check = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE assigned_to = ?");
+                        $check->execute([$id]);
+                        if ($check->fetchColumn() > 0) {
+                            $error = "Impossible de supprimer cet utilisateur car il a des tickets assignés. Désactivez-le plutôt.";
+                        } else {
+                            $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+                            $stmt->execute([$id]);
+                            $message = "Utilisateur supprimé avec succès !";
+                        }
                     }
                 }
+            } catch (PDOException $e) {
+                $error = "Erreur : " . $e->getMessage();
             }
-        } catch (PDOException $e) {
-            $error = "Erreur : " . $e->getMessage();
         }
     }
 }
@@ -345,9 +350,13 @@ try {
                             <h4 class="mb-0" style="font-weight: 700; color: #1e293b;">
                                 <?= ($role_filter === 'AGENT') ? 'Liste des Agents' : (($role_filter === 'ADMIN') ? 'Liste des Admins' : 'Tous les utilisateurs') ?>
                             </h4>
-                            <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
-                                <i class="ti ti-plus me-1"></i> Ajouter un utilisateur
-                            </button>
+                            <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                                <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
+                                    <i class="ti ti-plus me-1"></i> Ajouter un utilisateur
+                                </button>
+                            <?php else: ?>
+                                <button class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                            <?php endif; ?>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
@@ -400,23 +409,27 @@ try {
                                                     </td>
                                                     <td class="text-end pe-4">
                                                         <div class="d-flex gap-2 justify-content-end">
-                                                            <button class="action-btn btn-edit" 
-                                                                    data-id="<?= $u['id'] ?>" 
-                                                                    data-name="<?= htmlspecialchars($u['name']) ?>"
-                                                                    data-email="<?= htmlspecialchars($u['email']) ?>"
-                                                                    data-role="<?= $u['role'] ?>"
-                                                                    data-active="<?= $u['is_active'] ?>"
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#editModal">
-                                                                <i class="ti ti-edit"></i>
-                                                            </button>
-                                                            <button class="action-btn btn-delete" 
-                                                                    data-id="<?= $u['id'] ?>" 
-                                                                    data-name="<?= htmlspecialchars($u['name']) ?>"
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#deleteModal">
-                                                                <i class="ti ti-trash"></i>
-                                                            </button>
+                                                                <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                                                                <button class="action-btn btn-edit" 
+                                                                        data-id="<?= $u['id'] ?>" 
+                                                                        data-name="<?= htmlspecialchars($u['name']) ?>"
+                                                                        data-email="<?= htmlspecialchars($u['email']) ?>"
+                                                                        data-role="<?= $u['role'] ?>"
+                                                                        data-active="<?= $u['is_active'] ?>"
+                                                                        data-bs-toggle="modal" 
+                                                                        data-bs-target="#editModal">
+                                                                    <i class="ti ti-edit"></i>
+                                                                </button>
+                                                                <button class="action-btn btn-delete" 
+                                                                        data-id="<?= $u['id'] ?>" 
+                                                                        data-name="<?= htmlspecialchars($u['name']) ?>"
+                                                                        data-bs-toggle="modal" 
+                                                                        data-bs-target="#deleteModal">
+                                                                    <i class="ti ti-trash"></i>
+                                                                </button>
+                                                            <?php else: ?>
+                                                                <button class="action-btn" disabled title="Lecture seule"><i class="ti ti-eye"></i></button>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -470,7 +483,11 @@ try {
                     </div>
                     <div class="modal-footer border-0 pb-4 px-4">
                         <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4">Créer le compte</button>
+                        <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">Créer le compte</button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>
@@ -516,7 +533,11 @@ try {
                     </div>
                     <div class="modal-footer border-0 pb-4 px-4">
                         <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4">Mettre à jour</button>
+                        <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">Mettre à jour</button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>
@@ -539,7 +560,11 @@ try {
                     </div>
                     <div class="modal-footer border-0 pb-4 px-4">
                         <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-danger rounded-pill px-4">Supprimer</button>
+                        <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                            <button type="submit" class="btn btn-danger rounded-pill px-4">Supprimer</button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>

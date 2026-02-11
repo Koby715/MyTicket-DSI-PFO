@@ -23,41 +23,46 @@ $error = "";
 // --- TRAITEMENT DES ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
-        try {
-            if ($_POST['action'] === 'add') {
-                $name = trim($_POST['name']);
-                if (!empty($name)) {
-                    $stmt = $pdo->prepare("INSERT INTO categories (name) VALUES (?)");
-                    $stmt->execute([$name]);
-                    $message = "Catégorie ajoutée avec succès !";
-                } else {
-                    $error = "Le nom de la catégorie est requis.";
-                }
-            } elseif ($_POST['action'] === 'edit') {
-                $id = $_POST['id'];
-                $name = trim($_POST['name']);
-                if (!empty($id) && !empty($name)) {
-                    $stmt = $pdo->prepare("UPDATE categories SET name = ? WHERE id = ?");
-                    $stmt->execute([$name, $id]);
-                    $message = "Catégorie mise à jour avec succès !";
-                }
-            } elseif ($_POST['action'] === 'delete') {
-                $id = $_POST['id'];
-                if (!empty($id)) {
-                    // Vérifier si la catégorie est utilisée par des tickets
-                    $check = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE category_id = ?");
-                    $check->execute([$id]);
-                    if ($check->fetchColumn() > 0) {
-                        $error = "Impossible de supprimer cette catégorie car elle est utilisée par des tickets.";
+        // Server-side authorization: only ADMIN and SUPERVISOR can modify categories
+        if (!in_array($admin_role, ['ADMIN', 'SUPERVISOR'])) {
+            $error = "Vous n'avez pas les droits nécessaires pour modifier les catégories.";
+        } else {
+            try {
+                if ($_POST['action'] === 'add') {
+                    $name = trim($_POST['name']);
+                    if (!empty($name)) {
+                        $stmt = $pdo->prepare("INSERT INTO categories (name) VALUES (?)");
+                        $stmt->execute([$name]);
+                        $message = "Catégorie ajoutée avec succès !";
                     } else {
-                        $stmt = $pdo->prepare("DELETE FROM categories WHERE id = ?");
-                        $stmt->execute([$id]);
-                        $message = "Catégorie supprimée avec succès !";
+                        $error = "Le nom de la catégorie est requis.";
+                    }
+                } elseif ($_POST['action'] === 'edit') {
+                    $id = $_POST['id'];
+                    $name = trim($_POST['name']);
+                    if (!empty($id) && !empty($name)) {
+                        $stmt = $pdo->prepare("UPDATE categories SET name = ? WHERE id = ?");
+                        $stmt->execute([$name, $id]);
+                        $message = "Catégorie mise à jour avec succès !";
+                    }
+                } elseif ($_POST['action'] === 'delete') {
+                    $id = $_POST['id'];
+                    if (!empty($id)) {
+                        // Vérifier si la catégorie est utilisée par des tickets
+                        $check = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE category_id = ?");
+                        $check->execute([$id]);
+                        if ($check->fetchColumn() > 0) {
+                            $error = "Impossible de supprimer cette catégorie car elle est utilisée par des tickets.";
+                        } else {
+                            $stmt = $pdo->prepare("DELETE FROM categories WHERE id = ?");
+                            $stmt->execute([$id]);
+                            $message = "Catégorie supprimée avec succès !";
+                        }
                     }
                 }
+            } catch (PDOException $e) {
+                $error = "Erreur : " . $e->getMessage();
             }
-        } catch (PDOException $e) {
-            $error = "Erreur : " . $e->getMessage();
         }
     }
 }
@@ -288,9 +293,13 @@ try {
                     <div class="card border-0 shadow-sm" style="border-radius: 20px;">
                         <div class="card-header bg-white border-0 py-4 px-4 d-flex justify-content-between align-items-center">
                             <h4 class="mb-0" style="font-weight: 700; color: #1e293b;">Liste des catégories</h4>
-                            <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
-                                <i class="ti ti-plus me-1"></i> Ajouter une catégorie
-                            </button>
+                            <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                                <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
+                                    <i class="ti ti-plus me-1"></i> Ajouter une catégorie
+                                </button>
+                            <?php else: ?>
+                                <button class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                            <?php endif; ?>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
@@ -317,20 +326,24 @@ try {
                                                     <td><span class="fw-700 text-dark"><?= htmlspecialchars($cat['name']) ?></span></td>
                                                     <td class="text-end pe-4">
                                                         <div class="d-flex gap-2 justify-content-end">
-                                                            <button class="action-btn btn-edit" 
-                                                                    data-id="<?= $cat['id'] ?>" 
-                                                                    data-name="<?= htmlspecialchars($cat['name']) ?>"
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#editModal">
-                                                                <i class="ti ti-edit"></i>
-                                                            </button>
-                                                            <button class="action-btn btn-delete" 
-                                                                    data-id="<?= $cat['id'] ?>" 
-                                                                    data-name="<?= htmlspecialchars($cat['name']) ?>"
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#deleteModal">
-                                                                <i class="ti ti-trash"></i>
-                                                            </button>
+                                                                <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                                                                <button class="action-btn btn-edit" 
+                                                                        data-id="<?= $cat['id'] ?>" 
+                                                                        data-name="<?= htmlspecialchars($cat['name']) ?>"
+                                                                        data-bs-toggle="modal" 
+                                                                        data-bs-target="#editModal">
+                                                                    <i class="ti ti-edit"></i>
+                                                                </button>
+                                                                <button class="action-btn btn-delete" 
+                                                                        data-id="<?= $cat['id'] ?>" 
+                                                                        data-name="<?= htmlspecialchars($cat['name']) ?>"
+                                                                        data-bs-toggle="modal" 
+                                                                        data-bs-target="#deleteModal">
+                                                                    <i class="ti ti-trash"></i>
+                                                                </button>
+                                                            <?php else: ?>
+                                                                <button class="action-btn" disabled title="Lecture seule"><i class="ti ti-eye"></i></button>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -364,7 +377,11 @@ try {
                     </div>
                     <div class="modal-footer border-0 pb-4 px-4">
                         <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4">Enregistrer</button>
+                        <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">Enregistrer</button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>
@@ -390,7 +407,11 @@ try {
                     </div>
                     <div class="modal-footer border-0 pb-4 px-4">
                         <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4">Mettre à jour</button>
+                        <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">Mettre à jour</button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>
@@ -413,7 +434,11 @@ try {
                     </div>
                     <div class="modal-footer border-0 pb-4 px-4">
                         <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-danger rounded-pill px-4">Supprimer</button>
+                        <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                            <button type="submit" class="btn btn-danger rounded-pill px-4">Supprimer</button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>

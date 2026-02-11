@@ -23,43 +23,48 @@ $error = "";
 // --- TRAITEMENT DES ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
-        try {
-            if ($_POST['action'] === 'add') {
-                $name = trim($_POST['name']);
-                $level = intval($_POST['level']);
-                if (!empty($name)) {
-                    $stmt = $pdo->prepare("INSERT INTO priorities (name, level) VALUES (?, ?)");
-                    $stmt->execute([$name, $level]);
-                    $message = "Priorité ajoutée avec succès !";
-                } else {
-                    $error = "Le nom de la priorité est requis.";
-                }
-            } elseif ($_POST['action'] === 'edit') {
-                $id = $_POST['id'];
-                $name = trim($_POST['name']);
-                $level = intval($_POST['level']);
-                if (!empty($id) && !empty($name)) {
-                    $stmt = $pdo->prepare("UPDATE priorities SET name = ?, level = ? WHERE id = ?");
-                    $stmt->execute([$name, $level, $id]);
-                    $message = "Priorité mise à jour avec succès !";
-                }
-            } elseif ($_POST['action'] === 'delete') {
-                $id = $_POST['id'];
-                if (!empty($id)) {
-                    // Vérifier si la priorité est utilisée
-                    $check = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE priority_id = ?");
-                    $check->execute([$id]);
-                    if ($check->fetchColumn() > 0) {
-                        $error = "Impossible de supprimer cette priorité car elle est utilisée par des tickets.";
+        // Server-side authorization: only ADMIN and SUPERVISOR can modify priorities
+        if (!in_array($admin_role, ['ADMIN', 'SUPERVISOR'])) {
+            $error = "Vous n'avez pas les droits nécessaires pour modifier les priorités.";
+        } else {
+            try {
+                if ($_POST['action'] === 'add') {
+                    $name = trim($_POST['name']);
+                    $level = intval($_POST['level']);
+                    if (!empty($name)) {
+                        $stmt = $pdo->prepare("INSERT INTO priorities (name, level) VALUES (?, ?)");
+                        $stmt->execute([$name, $level]);
+                        $message = "Priorité ajoutée avec succès !";
                     } else {
-                        $stmt = $pdo->prepare("DELETE FROM priorities WHERE id = ?");
-                        $stmt->execute([$id]);
-                        $message = "Priorité supprimée avec succès !";
+                        $error = "Le nom de la priorité est requis.";
+                    }
+                } elseif ($_POST['action'] === 'edit') {
+                    $id = $_POST['id'];
+                    $name = trim($_POST['name']);
+                    $level = intval($_POST['level']);
+                    if (!empty($id) && !empty($name)) {
+                        $stmt = $pdo->prepare("UPDATE priorities SET name = ?, level = ? WHERE id = ?");
+                        $stmt->execute([$name, $level, $id]);
+                        $message = "Priorité mise à jour avec succès !";
+                    }
+                } elseif ($_POST['action'] === 'delete') {
+                    $id = $_POST['id'];
+                    if (!empty($id)) {
+                        // Vérifier si la priorité est utilisée
+                        $check = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE priority_id = ?");
+                        $check->execute([$id]);
+                        if ($check->fetchColumn() > 0) {
+                            $error = "Impossible de supprimer cette priorité car elle est utilisée par des tickets.";
+                        } else {
+                            $stmt = $pdo->prepare("DELETE FROM priorities WHERE id = ?");
+                            $stmt->execute([$id]);
+                            $message = "Priorité supprimée avec succès !";
+                        }
                     }
                 }
+            } catch (PDOException $e) {
+                $error = "Erreur : " . $e->getMessage();
             }
-        } catch (PDOException $e) {
-            $error = "Erreur : " . $e->getMessage();
         }
     }
 }
@@ -301,9 +306,13 @@ try {
                     <div class="card border-0 shadow-sm" style="border-radius: 20px;">
                         <div class="card-header bg-white border-0 py-4 px-4 d-flex justify-content-between align-items-center">
                             <h4 class="mb-0" style="font-weight: 700; color: #1e293b;">Liste des priorités</h4>
-                            <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
-                                <i class="ti ti-plus me-1"></i> Ajouter une priorité
-                            </button>
+                            <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                                <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
+                                    <i class="ti ti-plus me-1"></i> Ajouter une priorité
+                                </button>
+                            <?php else: ?>
+                                <button class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                            <?php endif; ?>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
@@ -334,21 +343,25 @@ try {
                                                     <td class="fw-600 text-muted">#<?= $i++ ?></td>
                                                     <td class="text-end pe-4">
                                                         <div class="d-flex gap-2 justify-content-end">
-                                                            <button class="action-btn btn-edit" 
-                                                                    data-id="<?= $prio['id'] ?>" 
-                                                                    data-name="<?= htmlspecialchars($prio['name']) ?>"
-                                                                    data-level="<?= $prio['level'] ?>"
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#editModal">
-                                                                <i class="ti ti-edit"></i>
-                                                            </button>
-                                                            <button class="action-btn btn-delete" 
-                                                                    data-id="<?= $prio['id'] ?>" 
-                                                                    data-name="<?= htmlspecialchars($prio['name']) ?>"
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#deleteModal">
-                                                                <i class="ti ti-trash"></i>
-                                                            </button>
+                                                            <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                                                                <button class="action-btn btn-edit" 
+                                                                        data-id="<?= $prio['id'] ?>" 
+                                                                        data-name="<?= htmlspecialchars($prio['name']) ?>"
+                                                                        data-level="<?= $prio['level'] ?>"
+                                                                        data-bs-toggle="modal" 
+                                                                        data-bs-target="#editModal">
+                                                                    <i class="ti ti-edit"></i>
+                                                                </button>
+                                                                <button class="action-btn btn-delete" 
+                                                                        data-id="<?= $prio['id'] ?>" 
+                                                                        data-name="<?= htmlspecialchars($prio['name']) ?>"
+                                                                        data-bs-toggle="modal" 
+                                                                        data-bs-target="#deleteModal">
+                                                                    <i class="ti ti-trash"></i>
+                                                                </button>
+                                                            <?php else: ?>
+                                                                <button class="action-btn" disabled title="Lecture seule"><i class="ti ti-eye"></i></button>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -387,7 +400,11 @@ try {
                     </div>
                     <div class="modal-footer border-0 pb-4 px-4">
                         <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4">Enregistrer</button>
+                        <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">Enregistrer</button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>

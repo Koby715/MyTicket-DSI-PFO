@@ -34,8 +34,8 @@ if ($ticket_id <= 0) {
 }
 
 try {
-    // Vérifier l'existence du ticket
-    $stmt = $pdo->prepare("SELECT reference FROM tickets WHERE id = ?");
+    // Vérifier l'existence du ticket (récupère aussi l'assignation pour contrôle des droits)
+    $stmt = $pdo->prepare("SELECT reference, assigned_to FROM tickets WHERE id = ?");
     $stmt->execute([$ticket_id]);
     $ticket = $stmt->fetch();
 
@@ -46,7 +46,15 @@ try {
 
     switch ($action) {
         case 'hold':
-            // Accessible à tous les rôles connectés (Admin, Supervisor, Agent)
+            // Accessible à tous les rôles connectés, MAIS un AGENT ne peut mettre en attente que ses propres tickets
+            // Si AGENT, vérifier qu'il est bien assigné
+            if ($admin_role === 'AGENT') {
+                if (intval($ticket['assigned_to']) !== intval($admin_id)) {
+                    echo json_encode(['success' => false, 'message' => 'Vous ne pouvez mettre en attente que les tickets qui vous sont assignés.']);
+                    exit;
+                }
+            }
+
             // Récupérer l'ID du statut 'En attente'
             $stmtStatus = $pdo->prepare("SELECT id FROM statuses WHERE label = 'En attente' LIMIT 1");
             $stmtStatus->execute();
@@ -64,10 +72,18 @@ try {
             sendStatusUpdateEmail($ticket_id, $pdo);
             
             echo json_encode(['success' => true, 'message' => 'Ticket #' . $ticket['reference'] . ' mis en attente.']);
-            break;
+            break; 
 
         case 'resolve':
-            // Accessible à tous les rôles connectés
+            // Accessible à tous les rôles connectés, MAIS un AGENT ne peut résoudre que ses propres tickets
+            // Si AGENT, vérifier qu'il est bien assigné
+            if ($admin_role === 'AGENT') {
+                if (intval($ticket['assigned_to']) !== intval($admin_id)) {
+                    echo json_encode(['success' => false, 'message' => 'Vous ne pouvez résoudre que les tickets qui vous sont assignés.']);
+                    exit;
+                }
+            }
+
             // Récupérer l'ID du statut 'Résolu'
             $stmtStatus = $pdo->prepare("SELECT id FROM statuses WHERE label = 'Résolu' LIMIT 1");
             $stmtStatus->execute();

@@ -514,21 +514,23 @@ if ($userEmail) {
             </div>
             <div class="row">
               <div class="col-md-6">
-                <div class="form-group mb-3">
-                  <label class="form-label">Catégorie</label>
-                  <select class="form-select" id="edit-category" name="category_id">
-                    <option value="">Sélectionner une catégorie</option>
-                    <!-- Les options seront chargées dynamiquement -->
-                  </select>
-                </div>
+                  <div class="form-group mb-3">
+                    <label class="form-label">Catégorie</label>
+                    <select class="form-select" id="edit-category" name="category_id" disabled>
+                      <option value="">Sélectionner une catégorie</option>
+                      <!-- Les options seront chargées dynamiquement -->
+                    </select>
+                    <input type="hidden" id="edit-category-hidden" name="category_id">
+                  </div>
               </div>
               <div class="col-md-6">
                 <div class="form-group mb-3">
                   <label class="form-label">Priorité</label>
-                  <select class="form-select" id="edit-priority" name="priority_id">
+                  <select class="form-select" id="edit-priority" name="priority_id" disabled>
                     <option value="">Sélectionner une priorité</option>
                     <!-- Les options seront chargées dynamiquement -->
                   </select>
+                  <input type="hidden" id="edit-priority-hidden" name="priority_id">
                 </div>
               </div>
             </div>
@@ -570,7 +572,7 @@ if ($userEmail) {
     document.getElementById('view-category').textContent = ticket.category_name;
     document.getElementById('view-priority').innerHTML = '<span class="badge rounded-pill" style="background-color: ' + ticket.priority_color + '; color: white;">' + ticket.priority_name + '</span>';
     document.getElementById('view-subject').textContent = ticket.subject;
-    document.getElementById('view-description').textContent = ticket.description;
+    document.getElementById('view-description').innerHTML = ticket.description;
     
     // Formater les dates
     const createdDate = new Date(ticket.created_at);
@@ -589,6 +591,9 @@ if ($userEmail) {
     // Sauvegarder les valeurs actuelles avant de charger les options
     document.getElementById('edit-category').setAttribute('data-current-value', ticket.category_id);
     document.getElementById('edit-priority').setAttribute('data-current-value', ticket.priority_id);
+    // Also keep hidden inputs in sync (these are submitted since selects are disabled)
+    document.getElementById('edit-category-hidden').value = ticket.category_id || '';
+    document.getElementById('edit-priority-hidden').value = ticket.priority_id || '';
     
     // Charger les catégories et priorités
     loadCategories();
@@ -600,17 +605,20 @@ if ($userEmail) {
     fetch('get-categories.php')
       .then(response => response.json())
       .then(data => {
+        const list = Array.isArray(data) ? data : (data.categories || []);
         const select = document.getElementById('edit-category');
         const currentValue = select.getAttribute('data-current-value');
-        
+
         select.innerHTML = '<option value="">Sélectionner une catégorie</option>';
-        data.forEach(cat => {
+        list.forEach(cat => {
           select.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
         });
-        
+
         // Restaurer la valeur sélectionnée après le chargement
         if (currentValue) {
           select.value = currentValue;
+          // keep hidden input in sync
+          document.getElementById('edit-category-hidden').value = currentValue;
         }
       })
       .catch(error => {
@@ -624,17 +632,20 @@ if ($userEmail) {
     fetch('get-priorities.php')
       .then(response => response.json())
       .then(data => {
+        const list = Array.isArray(data) ? data : (data.priorities || []);
         const select = document.getElementById('edit-priority');
         const currentValue = select.getAttribute('data-current-value');
-        
+
         select.innerHTML = '<option value="">Sélectionner une priorité</option>';
-        data.forEach(pri => {
+        list.forEach(pri => {
           select.innerHTML += `<option value="${pri.id}">${pri.name}</option>`;
         });
-        
+
         // Restaurer la valeur sélectionnée après le chargement
         if (currentValue) {
           select.value = currentValue;
+          // keep hidden input in sync
+          document.getElementById('edit-priority-hidden').value = currentValue;
         }
       })
       .catch(error => {

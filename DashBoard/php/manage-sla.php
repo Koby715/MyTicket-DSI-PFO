@@ -36,19 +36,24 @@ try {
 // --- TRAITEMENT DES ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'update_sla') {
-        try {
-            $priority_id = $_POST['priority_id'];
-            $response_time = intval($_POST['response_time']);
-            $resolution_time = intval($_POST['resolution_time']);
+        // Server-side authorization: only ADMIN and SUPERVISOR can update SLA
+        if (!in_array($admin_role, ['ADMIN', 'SUPERVISOR'])) {
+            $error = "Vous n'avez pas les droits nécessaires pour modifier les SLA.";
+        } else {
+            try {
+                $priority_id = $_POST['priority_id'];
+                $response_time = intval($_POST['response_time']);
+                $resolution_time = intval($_POST['resolution_time']);
 
-            // Utiliser REPLACE pour insérer ou mettre à jour
-            $stmt = $pdo->prepare("INSERT INTO sla_settings (priority_id, response_time, resolution_time) 
-                                   VALUES (?, ?, ?) 
-                                   ON DUPLICATE KEY UPDATE response_time = VALUES(response_time), resolution_time = VALUES(resolution_time)");
-            $stmt->execute([$priority_id, $response_time, $resolution_time]);
-            $message = "Paramètres SLA mis à jour avec succès !";
-        } catch (PDOException $e) {
-            $error = "Erreur : " . $e->getMessage();
+                // Utiliser REPLACE pour insérer ou mettre à jour
+                $stmt = $pdo->prepare("INSERT INTO sla_settings (priority_id, response_time, resolution_time) 
+                                       VALUES (?, ?, ?) 
+                                       ON DUPLICATE KEY UPDATE response_time = VALUES(response_time), resolution_time = VALUES(resolution_time)");
+                $stmt->execute([$priority_id, $response_time, $resolution_time]);
+                $message = "Paramètres SLA mis à jour avec succès !";
+            } catch (PDOException $e) {
+                $error = "Erreur : " . $e->getMessage();
+            }
         }
     }
 }
@@ -173,6 +178,13 @@ try {
                 </div>
             <?php endif; ?>
 
+            <?php if ($error): ?>
+                <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm" role="alert">
+                    <i class="ti ti-alert-circle me-2"></i> <?= $error ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            <?php endif; ?>
+
             <div class="row">
                 <div class="col-md-12">
                     <div class="card border-0 shadow-sm" style="border-radius: 20px;">
@@ -208,7 +220,11 @@ try {
                                                         </div>
                                                     </div>
                                                     <div class="col-12 mt-4">
-                                                        <button type="submit" class="btn btn-primary w-100 rounded-pill">Mettre à jour</button>
+                                                        <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                                                            <button type="submit" class="btn btn-primary w-100 rounded-pill">Mettre à jour</button>
+                                                        <?php else: ?>
+                                                            <button type="button" class="btn btn-secondary w-100 rounded-pill" disabled>Lecture seule</button>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </div>
                                             </form>

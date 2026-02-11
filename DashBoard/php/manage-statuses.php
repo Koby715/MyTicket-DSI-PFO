@@ -23,41 +23,46 @@ $error = "";
 // --- TRAITEMENT DES ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action'])) {
-        try {
-            if ($_POST['action'] === 'add') {
-                $label = trim($_POST['label']);
-                if (!empty($label)) {
-                    $stmt = $pdo->prepare("INSERT INTO statuses (label) VALUES (?)");
-                    $stmt->execute([$label]);
-                    $message = "Statut ajouté avec succès !";
-                } else {
-                    $error = "Le libellé du statut est requis.";
-                }
-            } elseif ($_POST['action'] === 'edit') {
-                $id = $_POST['id'];
-                $label = trim($_POST['label']);
-                if (!empty($id) && !empty($label)) {
-                    $stmt = $pdo->prepare("UPDATE statuses SET label = ? WHERE id = ?");
-                    $stmt->execute([$label, $id]);
-                    $message = "Statut mis à jour avec succès !";
-                }
-            } elseif ($_POST['action'] === 'delete') {
-                $id = $_POST['id'];
-                if (!empty($id)) {
-                    // Vérifier si le statut est utilisé
-                    $check = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE status_id = ?");
-                    $check->execute([$id]);
-                    if ($check->fetchColumn() > 0) {
-                        $error = "Impossible de supprimer ce statut car il est utilisé par des tickets.";
+        // Server-side authorization: only ADMIN and SUPERVISOR can modify statuses
+        if (!in_array($admin_role, ['ADMIN', 'SUPERVISOR'])) {
+            $error = "Vous n'avez pas les droits nécessaires pour modifier les statuts.";
+        } else {
+            try {
+                if ($_POST['action'] === 'add') {
+                    $label = trim($_POST['label']);
+                    if (!empty($label)) {
+                        $stmt = $pdo->prepare("INSERT INTO statuses (label) VALUES (?)");
+                        $stmt->execute([$label]);
+                        $message = "Statut ajouté avec succès !";
                     } else {
-                        $stmt = $pdo->prepare("DELETE FROM statuses WHERE id = ?");
-                        $stmt->execute([$id]);
-                        $message = "Statut supprimé avec succès !";
+                        $error = "Le libellé du statut est requis.";
+                    }
+                } elseif ($_POST['action'] === 'edit') {
+                    $id = $_POST['id'];
+                    $label = trim($_POST['label']);
+                    if (!empty($id) && !empty($label)) {
+                        $stmt = $pdo->prepare("UPDATE statuses SET label = ? WHERE id = ?");
+                        $stmt->execute([$label, $id]);
+                        $message = "Statut mis à jour avec succès !";
+                    }
+                } elseif ($_POST['action'] === 'delete') {
+                    $id = $_POST['id'];
+                    if (!empty($id)) {
+                        // Vérifier si le statut est utilisé
+                        $check = $pdo->prepare("SELECT COUNT(*) FROM tickets WHERE status_id = ?");
+                        $check->execute([$id]);
+                        if ($check->fetchColumn() > 0) {
+                            $error = "Impossible de supprimer ce statut car il est utilisé par des tickets.";
+                        } else {
+                            $stmt = $pdo->prepare("DELETE FROM statuses WHERE id = ?");
+                            $stmt->execute([$id]);
+                            $message = "Statut supprimé avec succès !";
+                        }
                     }
                 }
+            } catch (PDOException $e) {
+                $error = "Erreur : " . $e->getMessage();
             }
-        } catch (PDOException $e) {
-            $error = "Erreur : " . $e->getMessage();
         }
     }
 }
@@ -307,9 +312,13 @@ function getStatusBadgeClass($status) {
                     <div class="card border-0 shadow-sm" style="border-radius: 20px;">
                         <div class="card-header bg-white border-0 py-4 px-4 d-flex justify-content-between align-items-center">
                             <h4 class="mb-0" style="font-weight: 700; color: #1e293b;">Liste des statuts</h4>
-                            <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
-                                <i class="ti ti-plus me-1"></i> Ajouter un statut
-                            </button>
+                            <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                                <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addModal">
+                                    <i class="ti ti-plus me-1"></i> Ajouter un statut
+                                </button>
+                            <?php else: ?>
+                                <button class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                            <?php endif; ?>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
@@ -342,20 +351,24 @@ function getStatusBadgeClass($status) {
                                                     </td>
                                                     <td class="text-end pe-4">
                                                         <div class="d-flex gap-2 justify-content-end">
-                                                            <button class="action-btn btn-edit" 
-                                                                    data-id="<?= $st['id'] ?>" 
-                                                                    data-label="<?= htmlspecialchars($st['label']) ?>"
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#editModal">
-                                                                <i class="ti ti-edit"></i>
-                                                            </button>
-                                                            <button class="action-btn btn-delete" 
-                                                                    data-id="<?= $st['id'] ?>" 
-                                                                    data-label="<?= htmlspecialchars($st['label']) ?>"
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#deleteModal">
-                                                                <i class="ti ti-trash"></i>
-                                                            </button>
+                                                            <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                                                                <button class="action-btn btn-edit" 
+                                                                        data-id="<?= $st['id'] ?>" 
+                                                                        data-label="<?= htmlspecialchars($st['label']) ?>"
+                                                                        data-bs-toggle="modal" 
+                                                                        data-bs-target="#editModal">
+                                                                    <i class="ti ti-edit"></i>
+                                                                </button>
+                                                                <button class="action-btn btn-delete" 
+                                                                        data-id="<?= $st['id'] ?>" 
+                                                                        data-label="<?= htmlspecialchars($st['label']) ?>"
+                                                                        data-bs-toggle="modal" 
+                                                                        data-bs-target="#deleteModal">
+                                                                    <i class="ti ti-trash"></i>
+                                                                </button>
+                                                            <?php else: ?>
+                                                                <button class="action-btn" disabled title="Lecture seule"><i class="ti ti-eye"></i></button>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -389,7 +402,11 @@ function getStatusBadgeClass($status) {
                     </div>
                     <div class="modal-footer border-0 pb-4 px-4">
                         <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-primary rounded-pill px-4">Enregistrer</button>
+                        <?php if (in_array($admin_role, ['ADMIN', 'SUPERVISOR'])): ?>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4">Enregistrer</button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" disabled>Lecture seule</button>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>

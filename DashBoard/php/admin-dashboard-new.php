@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * admin-dashboard.php
  * Dashboard d'administration complet et premium optimisé UX
@@ -19,15 +19,15 @@ $admin_role = $_SESSION['admin_role'];
 
 // --- RÉCUPÉRATION DES STATISTIQUES (KPI) ---
 try {
-    // 🟦 Tickets ouverts (Nouveau, En cours, En attente)
+    // 📂 Tickets ouverts (Nouveau, En cours, En attente)
     $stmt = $pdo->query("SELECT COUNT(*) FROM tickets WHERE status_id IN (SELECT id FROM statuses WHERE label IN ('Nouveau', 'En cours', 'En attente'))");
     $stats['open'] = $stmt->fetchColumn();
 
-    // 🟨 En attente utilisateur
+    // 🕒 En attente utilisateur
     $stmt = $pdo->query("SELECT COUNT(*) FROM tickets WHERE status_id IN (SELECT id FROM statuses WHERE label = 'En attente')");
     $stats['pending_user'] = $stmt->fetchColumn();
 
-    // 🟩 Résolus aujourd’hui
+    // ✅ Résolus aujourd'hui
     $stmt = $pdo->query("SELECT COUNT(*) FROM tickets WHERE status_id IN (SELECT id FROM statuses WHERE label = 'Résolu') AND DATE(updated_at) = CURDATE()");
     $stats['resolved_today'] = $stmt->fetchColumn();
 
@@ -40,7 +40,7 @@ try {
     $stmt->execute([$admin_id]);
     $stats['assigned_to_me'] = $stmt->fetchColumn();
 
-    // ⏱️ Temps moyen de réponse (Simulation basée sur le premier passage de Nouveau à autre chose)
+    // ⏳ Temps moyen de réponse
     $stats['avg_response_time'] = "2h 15m"; // Valeur simulée car requiert une table d'historique
     $stats['expired_count'] = 0; // Sera calculé dynamiquement dans la boucle pour l'instant
 
@@ -472,7 +472,7 @@ function getPriorityBadgeClass($priority) {
                             </span>
                         </a>
                         <div class="dropdown-menu dropdown-menu-end pc-h-dropdown shadow-lg border-0">
-                            <div class="dropdown-header"><h5>Bienvenue 👋</h5></div>
+                            <div class="dropdown-header"><h5>Bienvenue</h5></div>
                             <a href="#!" class="dropdown-item"><i class="ti ti-user"></i> Mon Profil</a>
                             <a href="#!" class="dropdown-item"><i class="ti ti-settings"></i> Paramètres</a>
                             <div class="dropdown-divider"></div>
@@ -507,7 +507,7 @@ function getPriorityBadgeClass($priority) {
             </div>
             <!-- [ Breadcrumb ] end -->
 
-            <!-- 1️⃣ KPI Cards Section -->
+            <!-- KPI Cards Section -->
             <div class="row">
                 <div class="col-md-6 col-xl-2">
                     <div class="card kpi-card shadow-sm" onclick="window.location.href='?filter=all'">
@@ -604,12 +604,12 @@ function getPriorityBadgeClass($priority) {
                 </div>
             </div> -->
 
-            <!-- 2️⃣ Zone de filtres & actions -->
+            <!-- Zone de filtres & actions -->
             <div class="filter-zone">
                 <form action="" method="GET" id="filterForm">
                     <div class="row g-4">
                         <div class="col-md-4">
-                            <label class="form-label">🔍 RECHERCHE GLOBALE</label>
+                            <label class="form-label">RECHERCHE GLOBALE</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light border-0"><i class="ti ti-search text-muted"></i></span>
                                 <input type="text" name="search" class="form-control border-0 bg-light" placeholder="Référence, Email, Sujet, Nom..." value="<?= htmlspecialchars($_GET['search'] ?? '') ?>">
@@ -665,7 +665,7 @@ function getPriorityBadgeClass($priority) {
                 </form>
             </div>
 
-            <!-- 4️⃣ Tableau principal des tickets -->
+            <!-- Tableau principal des tickets -->
             <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 20px;">
                 <div class="card-header bg-white border-0 py-4 px-4 d-flex justify-content-between align-items-center">
                     <h4 class="mb-0" style="font-weight: 700; color: #1e293b;">Liste des Tickets <small class="text-muted fw-normal f-14 ms-2">(<?= count($tickets) ?> résultats)</small></h4>
@@ -909,7 +909,7 @@ function getPriorityBadgeClass($priority) {
 
                     <div class="mb-4 text-break">
                         <label class="f-11 text-muted text-uppercase fw-600 mb-2">Description</label>
-                        <div id="modal-description" class="p-3 border rounded-4 bg-white" style="min-height: 100px; "></div>
+                        <div id="modal-description" class="p-3 border rounded-4 bg-white" style="min-height: 100px; white-space: pre-wrap;"></div>
                     </div>
 
                     <div id="modal-attachments-container" class="d-none">
@@ -919,13 +919,43 @@ function getPriorityBadgeClass($priority) {
                 </div>
                 <div class="modal-footer border-0 pb-4 px-4 bg-light bg-opacity-50">
                     <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Fermer</button>
+                    
                     <button type="button" id="modal-btn-assign" class="btn btn-outline-primary rounded-pill px-4 d-none">Assigner</button>
                     <button type="button" id="modal-btn-reply" class="btn btn-primary rounded-pill px-4">Répondre</button>
-                </div>
             </div>
         </div>
     </div>
+    </div>
 
+    <div class="modal fade" id="reportResolutionModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                <div class="modal-header border-0 pt-4 px-4">
+                    <h5 class="modal-title fw-700">Rapport de Résolution - <span id="report-ticket-ref" class="text-primary"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="reportResolutionForm" enctype="multipart/form-data">
+                    <div class="modal-body px-4">
+                        <input type="hidden" name="ticket_id" id="report-ticket-id">
+                        <div class="mb-3">
+                            <label class="form-label fw-600 text-uppercase f-12">Commentaire de résolution <span class="text-danger">*</span></label>
+                            <textarea name="report_content" id="report-content" class="form-control bg-light border-0" rows="5" placeholder="Décrivez en détail comment le problème a été résolu..." required minlength="10"></textarea>
+                            <div class="d-flex justify-content-between mt-1"><small class="text-muted" id="report-char-count">0 / 5000 caractères</small></div>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label fw-600 text-uppercase f-12">Pièce jointe (optionnel)</label>
+                            <input type="file" name="report_attachment" id="report-attachment" class="form-control bg-light border-0" accept=".pdf,.jpg,.jpeg,.png">
+                            <small class="text-muted f-11">Formats acceptés : PDF, JPG, PNG (Max 5Mo)</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pb-4 px-4">
+                        <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Annuler</button>
+                        <button type="button" id="submitReportBtn" class="btn btn-success rounded-pill px-4"><i class="ti ti-check me-1"></i> Confirmer la résolution</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     <!-- Required Js -->
     <script src="../assets/js/plugins/popper.min.js"></script>
     <script src="../assets/js/plugins/simplebar.min.js"></script>
@@ -934,6 +964,7 @@ function getPriorityBadgeClass($priority) {
     <script src="../assets/js/pcoded.js"></script>
     <script src="../assets/js/plugins/feather.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../assets/js/resolution-report.js"></script>
 
     <script>
         // Initialize tooltips
@@ -1061,7 +1092,9 @@ function getPriorityBadgeClass($priority) {
                         document.getElementById('modal-user-avatar').textContent = (t.nom || '?').substring(0, 1).toUpperCase();
                         
                         document.getElementById('modal-subject').textContent = t.subject;
-                        document.getElementById('modal-description').innerHTML = t.description;
+                        // Enlever les balises HTML de la description (ex: <p></p>)
+                        const cleanDescription = (t.description || '').replace(/<\/?[^>]+(>|$)/g, "");
+                        document.getElementById('modal-description').textContent = cleanDescription;
                         
                         // Pièces jointes
                         const attContainer = document.getElementById('modal-attachments-container');
@@ -1085,9 +1118,22 @@ function getPriorityBadgeClass($priority) {
                         } else {
                             attContainer.classList.add('d-none');
                         }
-
+                        
                         // Boutons contextuels
                         const btnAssign = document.getElementById('modal-btn-assign');
+                        const btnViewReport = document.getElementById('modal-btn-view-report');
+                        
+                        if (btnViewReport) {
+                            if (['résolu', 'fermé'].includes((t.status_label || '').toLowerCase())) {
+                                btnViewReport.classList.remove('d-none');
+                                btnViewReport.dataset.id = t.id;
+                                btnViewReport.classList.add('btn-view-report');
+                            } else {
+                                btnViewReport.classList.add('d-none');
+                                btnViewReport.classList.remove('btn-view-report');
+                            }
+                        }
+                        
                         if (!t.assigned_to && <?= json_encode(in_array($admin_role, ['ADMIN', 'SUPERVISOR'])) ?>) {
                             btnAssign.classList.remove('d-none');
                             btnAssign.onclick = () => {
@@ -1097,7 +1143,6 @@ function getPriorityBadgeClass($priority) {
                         } else {
                             btnAssign.classList.add('d-none');
                         }
-                        
                         detailModal.show();
                     } else {
                         Swal.fire('Erreur', data.message, 'error');
@@ -1146,7 +1191,7 @@ function getPriorityBadgeClass($priority) {
             }
         }
 
-        // Actions rapides (Mettre en attente (TEST), Résoudre, Supprimer)
+        // Actions rapides (Mettre en attente, Résoudre, Supprimer)
         document.querySelectorAll('.btn-quick-action').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -1158,14 +1203,12 @@ function getPriorityBadgeClass($priority) {
 
                 switch(action) {
                     case 'hold': 
-                        actionText = "Mettre en attente (TEST)"; 
-                        confirmText = "Oui, Mettre en attente (TEST)";
+                        actionText = "Mettre en attente"; 
+                        confirmText = "Oui, mettre en attente";
                         break;
                     case 'resolve': 
-                        actionText = "Résoudre"; 
-                        confirmText = "Oui, résoudre le ticket";
-                        confirmColor = "#28a745";
-                        break;
+                        // Ce cas est géré par delegation dans resolution-report.js
+                        return;
                     case 'delete': 
                         actionText = "Supprimer"; 
                         confirmText = "Oui, supprimer définitivement";
@@ -1217,12 +1260,102 @@ function getPriorityBadgeClass($priority) {
             });
         });
 
+                // Compteur de caractères pour le rapport de résolution
+        const reportTextarea = document.getElementById('report-content');
+        const charCountDisplay = document.getElementById('report-char-count');
+        if (reportTextarea && charCountDisplay) {
+            reportTextarea.addEventListener('input', function() {
+                const count = this.value.length;
+                charCountDisplay.textContent = `${count} / 5000 caractères`;
+                charCountDisplay.classList.toggle('text-danger', count > 5000);
+            });
+        } 
         layout_change('light');
         change_box_container('false');
         layout_rtl_change('false');
+        
+
+        // Bouton "Voir le rapport"
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn-view-report');
+            if (!btn) return;
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const id = btn.dataset.id;
+            
+            Swal.fire({
+                title: 'Récupération du rapport...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            fetch(`get-rapport.php?ticket_id=${id}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Erreur réseau');
+                    return response.json();
+                })
+                .then(data => {
+                    Swal.close();
+                    if (data.success && data.data) {
+                        const r = data.data;
+                        let attsHtml = "";
+                        if (r.attachments && r.attachments.length > 0) {
+                            attsHtml = '<div class="mt-3 text-start"><label class="f-11 fw-600 text-muted mb-2 text-uppercase">Pièces jointes :</label><div class="d-flex flex-wrap gap-2">';
+                            r.attachments.forEach(a => {
+                                let fPath = a.file_path.replace(/\\/g, '/');
+                                attsHtml += `<a href="${fPath}" target="_blank" class="btn btn-sm btn-light border p-1 f-10 d-flex align-items-center gap-1"><i class="ti ti-paperclip"></i> ${a.file_name}</a>`;
+                            });
+                            attsHtml += '</div></div>';
+                        }
+
+                        Swal.fire({
+                            title: '<span class="fw-700">Rapport de Résolution</span>',
+                            html: `
+                                <div class="text-start p-2">
+                                    <div class="mb-3">
+                                        <label class="f-11 fw-600 text-muted text-uppercase d-block mb-1">Agent responsable :</label>
+                                        <span class="fw-700 text-primary f-14">${r.agent_name || 'Inconnu'}</span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="f-11 fw-600 text-muted text-uppercase d-block mb-1">Date de clôture :</label>
+                                        <span class="f-12 text-dark">${new Date(r.created_at).toLocaleString('fr-FR')}</span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="f-11 fw-600 text-muted text-uppercase d-block mb-1">Commentaire :</label>
+                                        <div class="p-3 bg-light rounded-3 f-13 shadow-sm border" style="white-space: pre-wrap; line-height: 1.5; text-align: justify;">${r.report_content}</div>
+                                    </div>
+                                    ${attsHtml}
+                                </div>
+                            `,
+                            width: '550px',
+                            confirmButtonText: 'Fermer',
+                            confirmButtonColor: '#20317b',
+                            customClass: { popup: 'rounded-4 shadow-lg' }
+                        });
+                    } else {
+                        Swal.fire('Note', 'Aucun rapport détaillé n\'a été saisi pour ce ticket.', 'info');
+                    }
+                })
+                .catch(error => {
+                    Swal.close();
+                    console.error('Fetch error:', error);
+                    Swal.fire('Erreur', 'Impossible de charger les détails du rapport.', 'error');
+                });
+        });
+
         preset_change("preset-1");
         font_change("Public-Sans");
     </script>
 </body>
 </html>
+<?php // MODIFIED BY AGENT
+
+
+
+
+
+// TEST APPEND
+
 
