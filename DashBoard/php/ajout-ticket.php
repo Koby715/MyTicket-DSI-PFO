@@ -247,8 +247,16 @@
 
                       // Gestion de la soumission du formulaire
                       var form = document.getElementById('ticket-form');
+                      var submitBtn = form.querySelector('button[type="submit"]');
+                      var originalBtnText = submitBtn.innerHTML;
+
                       form.addEventListener('submit', function (e) {
                         e.preventDefault();
+                        
+                        // Désactiver le bouton et afficher le chargement
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Envoi en cours...';
+
                         var descNode = document.querySelector('#pc-quil-1 .ql-editor');
                         var description = descNode ? descNode.innerHTML : '';
                         document.getElementById('ticket-description').value = description;
@@ -272,6 +280,9 @@
                             }
                           } else {
                             // Erreur : afficher les messages d'erreur
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalBtnText;
+
                             var errorAlert = document.getElementById('error-alert');
                             var errorList = document.getElementById('error-list');
                             
@@ -303,6 +314,9 @@
                         })
                         .catch(function (err) {
                           console.error(err);
+                          submitBtn.disabled = false;
+                          submitBtn.innerHTML = originalBtnText;
+                          
                           var errorAlert = document.getElementById('error-alert');
                           var errorList = document.getElementById('error-list');
                           

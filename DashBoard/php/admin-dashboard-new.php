@@ -1,6 +1,6 @@
 <?php
 /**
- * admin-dashboard.php
+ * admin-dashboard-new.php
  * Dashboard d'administration complet et premium optimisé UX
  */
 
@@ -56,8 +56,8 @@ $params = [];
 // Recherche globale
 if (!empty($_GET['search'])) {
     $search = "%" . trim($_GET['search']) . "%";
-    $where_clauses[] = "(t.reference LIKE ? OR t.subject LIKE ? OR t.email LIKE ? OR t.nom LIKE ?)";
-    $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search;
+    $where_clauses[] = "(t.reference LIKE ? OR t.subject LIKE ? OR t.email LIKE ? OR t.nom LIKE ? OR u.name LIKE ?)";
+    $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search;
 }
 
 // Filtres simples
@@ -357,7 +357,7 @@ function getPriorityBadgeClass($priority) {
     <nav class="pc-sidebar">
         <div class="navbar-wrapper">
             <div class="m-header sidebar-logo">
-                <a href="admin-dashboard.php" class="b-brand">
+                <a href="admin-dashboard-new.php" class="b-brand">
                     <img src="../../assets/img/logo/monimage.png" alt="logo" class="logo-lg">
                     <img src="../../assets/img/logo/monimage.png" alt="logo" class="logo-sm" style="max-height: 30px;">
                 </a>
@@ -365,7 +365,7 @@ function getPriorityBadgeClass($priority) {
             <div class="navbar-content">
                 <ul class="pc-navbar mt-2">
                     <li class="pc-item <?= ($current_filter == 'all' && !isset($_GET['status'])) ? 'active' : '' ?>">
-                        <a href="admin-dashboard.php" class="pc-link">
+                        <a href="admin-dashboard-new.php" class="pc-link">
                             <span class="pc-micon"><i class="ti ti-dashboard"></i></span>
                             <span class="pc-mtext">Dashboard</span>
                         </a>
@@ -439,7 +439,7 @@ function getPriorityBadgeClass($priority) {
             </div>
             <div class="ms-auto">
                 <ul class="list-unstyled">
-                    <li class="dropdown pc-h-item">
+                    <!-- <li class="dropdown pc-h-item">
                         <a class="pc-head-link dropdown-toggle arrow-none me-0" data-bs-toggle="dropdown" href="#" role="button">
                             <i class="ti ti-bell"></i>
                             <span class="badge bg-danger pc-h-badge">3</span>
@@ -462,7 +462,7 @@ function getPriorityBadgeClass($priority) {
                             <div class="dropdown-divider"></div>
                             <div class="text-center py-2"><a href="#!" class="text-primary f-12">Voir toutes les notifications</a></div>
                         </div>
-                    </li>
+                    </li> -->
                     <li class="dropdown pc-h-item header-user-profile">
                         <a class="pc-head-link dropdown-toggle arrow-none me-0 border-0" data-bs-toggle="dropdown" href="#" role="button">
                             <img src="../assets/images/user/avatar-1.jpg" alt="user-image" class="user-avtar">
@@ -516,7 +516,7 @@ function getPriorityBadgeClass($priority) {
                                 <i class="ti ti-ticket"></i>
                             </div>
                             <h6 class="text-muted mb-1 font-weight-600">Tickets ouverts</h6>
-                            <h3 class="mb-0" style="font-weight: 700;"><?= $stats['open'] ?></h3>
+                            <h3 class="mb-0" style="font-weight: 700;" id="kpi-open"><?= $stats['open'] ?></h3>
                         </div>
                     </div>
                 </div>
@@ -526,8 +526,8 @@ function getPriorityBadgeClass($priority) {
                             <div class="kpi-icon bg-light-info text-info">
                                 <i class="ti ti-clock-pause"></i>
                             </div>
-                            <h6 class="text-muted mb-1 font-weight-600">Attente user</h6>
-                            <h3 class="mb-0" style="font-weight: 700;"><?= $stats['pending_user'] ?></h3>
+                            <h6 class="text-muted mb-1 font-weight-600">Tickets en attente</h6>
+                            <h3 class="mb-0" style="font-weight: 700;" id="kpi-pending"><?= $stats['pending_user'] ?></h3>
                         </div>
                     </div>
                 </div>
@@ -538,7 +538,7 @@ function getPriorityBadgeClass($priority) {
                                 <i class="ti ti-check"></i>
                             </div>
                             <h6 class="text-muted mb-1 font-weight-600">Résolus (Auj.)</h6>
-                            <h3 class="mb-0" style="font-weight: 700;"><?= $stats['resolved_today'] ?></h3>
+                            <h3 class="mb-0" style="font-weight: 700;" id="kpi-resolved"><?= $stats['resolved_today'] ?></h3>
                         </div>
                     </div>
                 </div>
@@ -549,7 +549,7 @@ function getPriorityBadgeClass($priority) {
                                 <i class="ti ti-alert-triangle"></i>
                             </div>
                             <h6 class="text-muted mb-1 font-weight-600">Urgents</h6>
-                            <h3 class="mb-0" style="font-weight: 700;"><?= $stats['urgent'] ?></h3>
+                            <h3 class="mb-0" style="font-weight: 700;" id="kpi-urgent"><?= $stats['urgent'] ?></h3>
                         </div>
                     </div>
                 </div>
@@ -562,10 +562,7 @@ function getPriorityBadgeClass($priority) {
                             <div class="d-flex justify-content-between align-items-end">
                                 <div>
                                     <h6 class="text-white-50 mb-1 font-weight-600">Assignés à moi</h6>
-                                    <h3 class="mb-0 text-white" style="font-weight: 800; font-size: 2rem;"><?= $stats['assigned_to_me'] ?></h3>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-white text-primary rounded-pill px-3 py-2">Action requise</span>
+                                    <h3 class="mb-0 text-white" style="font-weight: 800; font-size: 2rem;" id="kpi-assigned"><?= $stats['assigned_to_me'] ?></h3>
                                 </div>
                             </div>
                         </div>
@@ -647,7 +644,7 @@ function getPriorityBadgeClass($priority) {
                             <button type="submit" class="btn btn-primary px-4 d-flex align-items-center gap-2 rounded-pill">
                                 <i class="ti ti-adjustments-horizontal"></i> Appliquer les filtres
                             </button>
-                            <a href="admin-dashboard.php" class="btn btn-link-secondary text-decoration-none">Réinitialiser</a>
+                            <a href="admin-dashboard-new.php" class="btn btn-link-secondary text-decoration-none">Réinitialiser</a>
                             <div class="vr mx-2"></div>
                             <button type="button" onclick="exportToExcel()" class="btn btn-outline-success border-0 px-3 d-flex align-items-center gap-2">
                                 <i class="ti ti-file-spreadsheet"></i> Exporter Excel
@@ -916,12 +913,27 @@ function getPriorityBadgeClass($priority) {
                         <label class="f-11 text-muted text-uppercase fw-600 mb-2">Pièces jointes</label>
                         <div id="modal-attachments" class="d-flex flex-wrap gap-2"></div>
                     </div>
+
+                    <!-- Rapport de Résolution (Agent) -->
+                    <div id="modal-report-container" class="mt-4 d-none">
+                        <hr class="my-4 op-1">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="ti ti-report text-success f-20 me-2"></i>
+                            <label class="f-11 text-muted text-uppercase fw-600 mb-2">Rapport de Résolution</label>
+                        </div>
+                        <textarea id="modal-report-content" class="form-control p-3 border rounded-4 bg-light bg-opacity-10 text-dark f-14 mb-3" style="min-height: 100px; resize: none;" readonly></textarea>
+                        
+                        <div id="modal-report-attachments-container" class="d-none">
+                            <label class="f-11 text-muted text-uppercase fw-600 mb-2">Pièce jointe du rapport</label>
+                            <div id="modal-report-attachments" class="d-flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer border-0 pb-4 px-4 bg-light bg-opacity-50">
                     <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Fermer</button>
                     
                     <button type="button" id="modal-btn-assign" class="btn btn-outline-primary rounded-pill px-4 d-none">Assigner</button>
-                    <button type="button" id="modal-btn-reply" class="btn btn-primary rounded-pill px-4">Répondre</button>
+                    <!-- <button type="button" id="modal-btn-reply" class="btn btn-primary rounded-pill px-4">Répondre</button> -->
             </div>
         </div>
     </div>
@@ -936,6 +948,11 @@ function getPriorityBadgeClass($priority) {
                 </div>
                 <form id="reportResolutionForm" enctype="multipart/form-data">
                     <div class="modal-body px-4">
+                        <!-- Zone d'affichage des erreurs (Initialement cachée) -->
+                        <div id="report-error-alert" class="alert alert-danger d-none py-2 px-3 mb-3 border-0 f-13" style="border-radius: 10px;">
+                            <i class="ti ti-alert-circle me-1"></i> <span id="report-error-message"></span>
+                        </div>
+
                         <input type="hidden" name="ticket_id" id="report-ticket-id">
                         <div class="mb-3">
                             <label class="form-label fw-600 text-uppercase f-12">Commentaire de résolution <span class="text-danger">*</span></label>
@@ -976,6 +993,16 @@ function getPriorityBadgeClass($priority) {
         // Gestion de l'ouverture du modal d'assignation
         const assignModalElem = document.getElementById('assignModal');
         const assignModal = assignModalElem ? new bootstrap.Modal(assignModalElem) : null;
+
+        if (assignModalElem) {
+            assignModalElem.addEventListener('show.bs.modal', function() {
+                const btn = document.getElementById('confirmAssignBtn');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = "Confirmer l'assignation";
+                }
+            });
+        }
         
         document.querySelectorAll('.btn-assign-trigger').forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -993,6 +1020,35 @@ function getPriorityBadgeClass($priority) {
             });
         });
 
+        // Fonction de rafraîchissement dynamique des KPIs
+        function refreshKPIs() {
+            fetch('get-dashboard-stats.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const s = data.stats;
+                        const updateEl = (id, val) => {
+                            const el = document.getElementById(id);
+                            if (el && el.textContent != val) {
+                                el.style.transition = 'all 0.3s';
+                                el.style.transform = 'scale(1.2)';
+                                el.style.color = '#20317b';
+                                setTimeout(() => {
+                                    el.textContent = val;
+                                    el.style.transform = 'scale(1)';
+                                    el.style.color = '';
+                                }, 300);
+                            }
+                        };
+                        updateEl('kpi-open', s.open);
+                        updateEl('kpi-pending', s.pending_user);
+                        updateEl('kpi-resolved', s.resolved_today);
+                        updateEl('kpi-urgent', s.urgent);
+                        updateEl('kpi-assigned', s.assigned_to_me);
+                    }
+                });
+        }
+
         // Confirmation de l'assignation
         const confirmBtn = document.getElementById('confirmAssignBtn');
         if (confirmBtn) {
@@ -1009,6 +1065,12 @@ function getPriorityBadgeClass($priority) {
                 formData.append('ticket_id', ticketId);
                 formData.append('agent_id', agentId);
 
+                // Désactiver le bouton pour éviter les doubles clics
+                const btn = document.getElementById('confirmAssignBtn');
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Traitement...';
+
                 fetch('assign-ticket.php', {
                     method: 'POST',
                     body: formData
@@ -1016,16 +1078,58 @@ function getPriorityBadgeClass($priority) {
                 .then(response => response.json())
                 .then(data => {
                     if(data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Succès',
-                            text: data.message,
-                            timer: 1500,
-                            showConfirmButton: false
-                        }).then(() => {
-                            location.reload();
-                        });
+                        // Réinitialiser le bouton avant de fermer
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+
+                        const modalElem = document.getElementById('assignModal');
+                        modalElem.addEventListener('hidden.bs.modal', function handler() {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Succès',
+                                text: data.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => {
+                                // Mise à jour dynamique de la ligne
+                                const row = document.querySelector(`.ticket-row[data-id="${ticketId}"]`);
+                                if (row) {
+                                    // Mettre à jour l'agent
+                                    const agentSelect = document.getElementById('select-assign-agent');
+                                    const agentName = agentSelect.options[agentSelect.selectedIndex].text;
+                                    const agentZone = row.querySelector('td:nth-child(7)'); // Colonne "Assigné à"
+                                    if (agentZone) {
+                                        agentZone.innerHTML = `
+                                            <div class="d-flex align-items-center">
+                                                <div class="avtar avtar-xs bg-light-primary text-primary me-2 f-10" title="${agentName}">
+                                                    ${agentName.substring(0, 1).toUpperCase()}
+                                                </div>
+                                                <span class="f-13 fw-500">${agentName}</span>
+                                                <a href="javascript:void(0)" class="ms-2 text-muted btn-assign-trigger" data-id="${ticketId}" data-ref="${row.querySelector('.text-primary').textContent.replace('#','')}" data-current="${agentId}">
+                                                    <i class="ti ti-rotate"></i>
+                                                </a>
+                                            </div>`;
+                                    }
+                                    
+                                    // Mettre à jour le statut si nécessaire (Passage auto à "En cours")
+                                    const statusBadge = row.querySelector('.status-badge');
+                                    if (statusBadge && statusBadge.textContent.trim().toLowerCase() === 'nouveau') {
+                                        statusBadge.textContent = 'En cours';
+                                        statusBadge.className = 'status-badge bg-light-warning text-warning';
+                                    }
+                                    
+                                    // Animation de succès sur la ligne
+                                    row.style.backgroundColor = 'rgba(40, 167, 69, 0.1)';
+                                    setTimeout(() => row.style.backgroundColor = '', 2000);
+                                }
+                                refreshKPIs();
+                            });
+                            modalElem.removeEventListener('hidden.bs.modal', handler);
+                        }, { once: true });
+                        assignModal.hide();
                     } else {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
                         Swal.fire('Erreur', data.message, 'error');
                     }
                 })
@@ -1118,7 +1222,42 @@ function getPriorityBadgeClass($priority) {
                         } else {
                             attContainer.classList.add('d-none');
                         }
-                        
+
+                        // Rapport de résolution (Chargement Automatique)
+                        const reportContainer = document.getElementById('modal-report-container');
+                        const reportContent = document.getElementById('modal-report-content');
+                        const reportAttContainer = document.getElementById('modal-report-attachments-container');
+                        const reportAttList = document.getElementById('modal-report-attachments');
+
+                        if (t.rapport) {
+                            if (reportContainer) reportContainer.classList.remove('d-none');
+                            if (reportContent) reportContent.value = t.rapport.report_content;
+
+                            // Pièces jointes du rapport
+                            if (reportAttList) {
+                                reportAttList.innerHTML = '';
+                                if (t.rapport.attachments && t.rapport.attachments.length > 0) {
+                                    if (reportAttContainer) reportAttContainer.classList.remove('d-none');
+                                    t.rapport.attachments.forEach(att => {
+                                        const ext = att.file_name.split('.').pop().toLowerCase();
+                                        let icon = 'ti-file';
+                                        if (['jpg','jpeg','png','gif'].includes(ext)) icon = 'ti-photo';
+                                        if (['pdf'].includes(ext)) icon = 'ti-file-text';
+                                        
+                                        reportAttList.innerHTML += `
+                                            <a href="${att.file_path.replace(/\\/g, '/')}" target="_blank" class="btn btn-sm btn-light-success d-flex align-items-center gap-2 border">
+                                                <i class="ti ${icon}"></i> 
+                                                <span class="f-12">${att.file_name}</span>
+                                            </a>`;
+                                    });
+                                } else {
+                                    if (reportAttContainer) reportAttContainer.classList.add('d-none');
+                                }
+                            }
+                        } else {
+                            if (reportContainer) reportContainer.classList.add('d-none');
+                        }
+
                         // Boutons contextuels
                         const btnAssign = document.getElementById('modal-btn-assign');
                         const btnViewReport = document.getElementById('modal-btn-view-report');
@@ -1137,8 +1276,13 @@ function getPriorityBadgeClass($priority) {
                         if (!t.assigned_to && <?= json_encode(in_array($admin_role, ['ADMIN', 'SUPERVISOR'])) ?>) {
                             btnAssign.classList.remove('d-none');
                             btnAssign.onclick = () => {
+                                const detailModalElem = document.getElementById('ticketDetailModal');
+                                // Écouter la fermeture complète avant d'ouvrir le suivant
+                                detailModalElem.addEventListener('hidden.bs.modal', function handler() {
+                                    document.querySelector(`.btn-assign-trigger[data-id="${t.id}"]`)?.click();
+                                    detailModalElem.removeEventListener('hidden.bs.modal', handler);
+                                }, { once: true });
                                 detailModal.hide();
-                                document.querySelector(`.btn-assign-trigger[data-id="${t.id}"]`)?.click();
                             };
                         } else {
                             btnAssign.classList.add('d-none');
@@ -1245,7 +1389,21 @@ function getPriorityBadgeClass($priority) {
                                     timer: 2000,
                                     showConfirmButton: false
                                 }).then(() => {
-                                    location.reload();
+                                    const row = document.querySelector(`.ticket-row[data-id="${id}"]`);
+                                    if (row) {
+                                        if (action === 'delete') {
+                                            row.style.transform = 'translateX(100px)';
+                                            row.style.opacity = '0';
+                                            setTimeout(() => row.remove(), 300);
+                                        } else if (action === 'hold') {
+                                            const statusBadge = row.querySelector('.status-badge');
+                                            if (statusBadge) {
+                                                statusBadge.textContent = 'En attente';
+                                                statusBadge.className = 'status-badge bg-light-info text-info';
+                                            }
+                                        }
+                                    }
+                                    refreshKPIs();
                                 });
                             } else {
                                 Swal.fire('Erreur', data.message, 'error');
@@ -1359,3 +1517,4 @@ function getPriorityBadgeClass($priority) {
 // TEST APPEND
 
 
+// POWER SHELL WRITE TEST

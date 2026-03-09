@@ -60,8 +60,8 @@ Voici ce qui a été mis en place pour permettre aux agents de remplir un rappor
 
 ---
 
-### 3. **admin-dashboard.php** (MODIFIÉ)
-**Chemin:** `DashBoard/php/admin-dashboard.php`
+### 3. **admin-dashboard-new.php** (MODIFIÉ)
+**Chemin:** `DashBoard/php/admin-dashboard-new.php`
 
 **Modifications:**
 

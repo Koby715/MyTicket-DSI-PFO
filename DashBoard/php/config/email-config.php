@@ -58,5 +58,9 @@ $mailConfig['app_url'] = $envVars['APP_URL'] ?? 'http://localhost/Ticket';
 $mailConfig['reply_to'] = $envVars['MAIL_REPLY_TO'] ?? 'serviceinfo@pfo-construction.com';
 $mailConfig['environment'] = $environment;
 
+// URL et clé de l'API locale d'envoi (optionnel)
+$mailConfig['mail_api_url'] = $envVars['MAIL_API_URL'] ?? $envVars['MAILER_API_URL'] ?? 'http://127.0.0.1:8000/send-mail';
+$mailConfig['mail_api_key'] = $envVars['MAIL_API_KEY'] ?? null;
+
 return $mailConfig;
 ?>

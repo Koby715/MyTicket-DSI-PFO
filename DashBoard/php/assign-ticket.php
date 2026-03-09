@@ -26,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $agent_id = isset($_POST['agent_id']) ? intval($_POST['agent_id']) : 0;
 
     if ($ticket_id <= 0) {
+        http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'ID de ticket invalide.']);
         exit;
     }
@@ -37,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ?");
             $stmt->execute([$agent_id]);
             if (!$stmt->fetch()) {
+                http_response_code(404);
                 echo json_encode(['success' => false, 'message' => 'Agent introuvable.']);
                 exit;
             }
@@ -66,14 +68,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $updateStatus = $pdo->prepare("UPDATE tickets SET status_id = ? WHERE id = ?");
             $updateStatus->execute([$idProgress, $ticket_id]);
             
-            // Envoyer la notification email
-            sendStatusUpdateEmail($ticket_id, $pdo);
+            // Envoyer la notification email (capturer les erreurs pour éviter de bloquer la réponse)
+            try {
+                sendStatusUpdateEmail($ticket_id, $pdo);
+            } catch (Throwable $emailErr) {
+                error_log("Erreur notification email assignation (ticket $ticket_id): " . $emailErr->getMessage());
+                // On continue malgré l'erreur d'email, la logique métier a réussi
+            }
         }
 
+        http_response_code(200);
         echo json_encode(['success' => true, 'message' => 'Ticket assigné avec succès.']);
+        exit;
     } catch (PDOException $e) {
+        http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Erreur base de données : ' . $e->getMessage()]);
+        exit;
+    } catch (Throwable $e) {
+        error_log("Erreur assignation: " . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Erreur serveur : ' . $e->getMessage()]);
+        exit;
     }
 } else {
+    http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Méthode non autorisée.']);
+    exit;
 }

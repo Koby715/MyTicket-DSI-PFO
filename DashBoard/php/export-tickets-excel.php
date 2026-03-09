@@ -25,8 +25,8 @@ if (!empty($_GET['ids'])) {
     // Filtres habituels
     if (!empty($_GET['search'])) {
         $search = "%" . trim($_GET['search']) . "%";
-        $where_clauses[] = "(t.reference LIKE ? OR t.subject LIKE ? OR t.email LIKE ? OR t.nom LIKE ?)";
-        $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search;
+        $where_clauses[] = "(t.reference LIKE ? OR t.subject LIKE ? OR t.email LIKE ? OR t.nom LIKE ? OR u.name LIKE ?)";
+        $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search;
     }
     if (!empty($_GET['status'])) {
         $where_clauses[] = "t.status_id = ?";
@@ -57,12 +57,15 @@ try {
                    c.name as category_name, 
                    p.name as priority_name, 
                    s.label as status_label,
-                   u.name as assigned_name
+                   u.name as assigned_name,
+                   r.report_content,
+                   r.created_at as report_created_at
             FROM tickets t
             LEFT JOIN categories c ON t.category_id = c.id
             LEFT JOIN priorities p ON t.priority_id = p.id
             LEFT JOIN statuses s ON t.status_id = s.id
             LEFT JOIN users u ON t.assigned_to = u.id
+            LEFT JOIN rapports r ON t.id = r.ticket_id
             WHERE $where_sql
             ORDER BY t.created_at DESC";
     
@@ -95,6 +98,8 @@ echo '<tr>
         <th style="background-color: #20317b; color: white;">PRIORITE</th>
         <th style="background-color: #20317b; color: white;">STATUT</th>
         <th style="background-color: #20317b; color: white;">ASSIGNE A</th>
+        <th style="background-color: #20317b; color: white;">CONTENU RAPPORT</th>
+        <th style="background-color: #20317b; color: white;">DATE RESOLUTION</th>
       </tr>';
 
 foreach ($tickets as $t) {
@@ -108,6 +113,8 @@ foreach ($tickets as $t) {
     echo '<td>' . htmlspecialchars($t['priority_name'] ?? 'Normale') . '</td>';
     echo '<td>' . htmlspecialchars($t['status_label'] ?? 'Nouveau') . '</td>';
     echo '<td>' . htmlspecialchars($t['assigned_name'] ?? 'Non assigné') . '</td>';
+    echo '<td>' . htmlspecialchars($t['report_content'] ?? '') . '</td>';
+    echo '<td>' . ($t['report_created_at'] ?? '') . '</td>';
     echo '</tr>';
 }
 

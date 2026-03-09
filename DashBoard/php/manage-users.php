@@ -219,14 +219,14 @@ try {
     <nav class="pc-sidebar">
         <div class="navbar-wrapper">
             <div class="m-header sidebar-logo">
-                <a href="admin-dashboard.php" class="b-brand">
+                <a href="admin-dashboard-new.php" class="b-brand">
                     <img src="../../assets/img/logo/monimage.png" alt="logo" class="logo-lg">
                 </a>
             </div>
             <div class="navbar-content">
                 <ul class="pc-navbar mt-2">
                     <li class="pc-item">
-                        <a href="admin-dashboard.php" class="pc-link">
+                        <a href="admin-dashboard-new.php" class="pc-link">
                             <span class="pc-micon"><i class="ti ti-dashboard"></i></span>
                             <span class="pc-mtext">Dashboard</span>
                         </a>
@@ -237,8 +237,8 @@ try {
                     <li class="pc-item pc-hasmenu">
                         <a href="#!" class="pc-link"><span class="pc-micon"><i class="ti ti-ticket"></i></span><span class="pc-mtext">Tickets</span><span class="pc-arrow"><i data-feather="chevron-right"></i></span></a>
                         <ul class="pc-submenu">
-                            <li class="pc-item"><a class="pc-link" href="admin-dashboard.php?filter=all">Tous les tickets</a></li>
-                            <li class="pc-item"><a class="pc-link" href="admin-dashboard.php?filter=mine">Mes tickets</a></li>
+                            <li class="pc-item"><a class="pc-link" href="admin-dashboard-new.php?filter=all">Tous les tickets</a></li>
+                            <li class="pc-item"><a class="pc-link" href="admin-dashboard-new.php?filter=mine">Mes tickets</a></li>
                         </ul>
                     </li>
                     <li class="pc-item pc-caption">
@@ -363,7 +363,6 @@ try {
                                 <table class="table table-hover align-middle mb-0">
                                     <thead class="bg-light">
                                         <tr>
-                                            <th class="ps-4" style="width: 60px;">#</th>
                                             <th>UTILISATEUR</th>
                                             <th>EMAIL</th>
                                             <th>RÔLE</th>
@@ -381,16 +380,14 @@ try {
                                             </tr>
                                         <?php else: ?>
                                             <?php $i = 1; foreach ($users as $u): ?>
-                                                <tr>
-                                                    <td class="ps-4 fw-600 text-muted">#<?= $i++ ?></td>
+                                                <tr>    
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <div class="user-avtar me-3">
                                                                 <?= strtoupper(substr($u['name'], 0, 1)) ?>
                                                             </div>
                                                             <div>
-                                                                <h6 class="mb-0 fw-700"><?= htmlspecialchars($u['name']) ?></h6>
-                                                                <small class="text-muted">ID: #<?= $u['id'] ?></small>
+                                                                <h5 class="mb-0 fw-700"><?= htmlspecialchars($u['name']) ?></h5>
                                                             </div>
                                                         </div>
                                                     </td>

@@ -8,7 +8,7 @@ session_start();
 
 // Si déjà connecté, rediriger vers le dashboard
 if (isset($_SESSION['admin_id'])) {
-    header("Location: admin-dashboard.php");
+    header("Location: admin-dashboard-new.php");
     exit;
 }
 

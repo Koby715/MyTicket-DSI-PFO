@@ -197,13 +197,20 @@ try {
 
     // Envoi de l'email de notification HORS transaction pour éviter de bloquer la DB
     if ($resolved_generated) {
-        sendStatusUpdateEmail($ticket_id, $pdo);
+        try {
+            sendStatusUpdateEmail($ticket_id, $pdo);
+        } catch (Throwable $emailErr) {
+            error_log("Erreur notification email save-rapport (ticket $ticket_id): " . $emailErr->getMessage());
+            // On continue malgré l'erreur d'email, le rapport a été enregistré
+        }
     }
 
+    http_response_code(200);
     echo json_encode([
         'success' => true,
         'message' => $existing_rapport ? 'Rapport modifié avec succès' : 'Rapport créé avec succès'
     ]);
+    exit;
 
 }
 catch (PDOException $e) {
@@ -212,4 +219,5 @@ catch (PDOException $e) {
     error_log("Erreur save-rapport.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Erreur de base de données']);
+    exit;
 }

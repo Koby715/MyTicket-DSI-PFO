@@ -19,7 +19,6 @@ require_once 'lib/notification-helper.php';
 function sendTicketEmailViaLocalAPI($nom, $email, $reference, $subject, $ticket_id, $token, $uploadedFiles = []) {
     try {
         global $pdo;
-        $apiUrl = 'http://127.0.0.1:8000/send-mail';
         $emailConfig = require('config/email-config.php');
         $ticketLink = $emailConfig['app_url'] . '/DashBoard/php/liste-tickets-user.php?token=' . urlencode($token);
         
@@ -32,22 +31,21 @@ function sendTicketEmailViaLocalAPI($nom, $email, $reference, $subject, $ticket_
         
         // 2. Préparation des variables pour le template
         $variables = [
-            'customer_name' => $nom,
-            'reference' => $reference,
-            'subject' => $subject,
-            'link' => $ticketLink,
-            'created_date' => date('d/m/Y à H:i'),
-            'sla_time' => 3 // Par défaut 3 jours
+            'customer_name'  => $nom,
+            'reference'      => $reference,
+            'subject'        => $subject,
+            'link'           => $ticketLink,
+            'created_date'   => date('d/m/Y à H:i'),
+            'sla_time'       => 3 
         ];
         
-        // 3. Rendu du template avec Bootstrap
+        // 3. Rendu du template
         $mailBody = renderEmailTemplate($templateBody, $variables, $emailConfig['app_url']);
         
-        // 4. Préparation des pièces jointes (Chemins absolus requis pour Outlook)
+        // 4. Préparation des pièces jointes (Chemins absolus)
         $absoluteAttachments = [];
         if (!empty($uploadedFiles)) {
             $uploadBaseDir = __DIR__ . '/../../assets/uploads/tickets/';
-            
             foreach ($uploadedFiles as $file) {
                 $fullPath = realpath($uploadBaseDir . $file['stored']);
                 if ($fullPath && file_exists($fullPath)) {
@@ -56,42 +54,26 @@ function sendTicketEmailViaLocalAPI($nom, $email, $reference, $subject, $ticket_
             }
         }
 
-        // 5. Construction du Payload JSON
-        $data = [
-            'to' => $email,
-            'subject' => "Ticket Crée [$reference] : $subject",
-            'body' => $mailBody,
-            'is_html' => true,
-            'attachments' => $absoluteAttachments
-        ];
+        $mailSubject = "Ticket Créé [$reference] : $subject";
 
-        // 6. Appel cURL
-        $ch = curl_init($apiUrl);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        // 5. Ajout direct à la file d'attente (Asynchrone) pour supprimer la latence
+        // L'API sera appelée par le script cron-process-emails.php en arrière-plan
+        $queued = enqueueEmail($email, $mailSubject, $mailBody, $absoluteAttachments);
         
-        $result = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        // 7. Gestion de la réponse
-        if ($httpCode == 200) {
-            return true;
-        } else {
-            error_log("Erreur API Outlook ($httpCode) : " . $result);
-            return false;
+        if (!$queued) {
+            error_log("Erreur mise en file d'attente email pour recipient={$email}");
         }
-    } catch (Exception $e) {
-        error_log("Erreur envoi email: " . $e->getMessage());
+        
+        return $queued;
+    } catch (Throwable $e) {
+        error_log("Erreur processus email ticket: " . $e->getMessage());
         return false;
     }
 }
 
-// ============= ANCIENNE FONCTION D'ENVOI D'EMAIL (Legacy) =============
+// ============= FONCTION D'ENVOI D'EMAIL (RECOMMANDÉE / SMTP) =============
 
-function sendTicketEmail($nom, $email, $reference, $subject, $ticket_id, $token) {
+function sendTicketEmail($nom, $email, $reference, $subject, $ticket_id, $token, $uploadedFiles = []) {
     try {
         global $pdo;
         $emailConfig = require('config/email-config.php');
@@ -121,16 +103,31 @@ function sendTicketEmail($nom, $email, $reference, $subject, $ticket_id, $token)
         $mailBody = renderEmailTemplate($templateBody, $variables, $emailConfig['app_url']);
         
         $mailSubject = "Confirmation de création de ticket - $reference";
+
+        // 4. Préparation des pièces jointes
+        $attachments = [];
+        if (!empty($uploadedFiles)) {
+            $uploadBaseDir = __DIR__ . '/../../assets/uploads/tickets/';
+            foreach ($uploadedFiles as $file) {
+                $fullPath = realpath($uploadBaseDir . $file['stored']);
+                if ($fullPath && file_exists($fullPath)) {
+                    $attachments[] = [
+                        'path' => $fullPath,
+                        'name' => $file['original']
+                    ];
+                }
+            }
+        }
         
-        // Envoyer l'email
-        $success = $sender->sendHTML($email, $nom, $mailSubject, $mailBody);
+        // Envoyer l'email directement via SMTP (pas de confirmation locale requise)
+        $success = $sender->sendHTML($email, $nom, $mailSubject, $mailBody, $attachments);
         
         if (!$success) {
             error_log("Email send error: " . $sender->getError());
         }
         
         return $success;
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log("Erreur envoi email: " . $e->getMessage());
         return false;
     }
@@ -350,10 +347,11 @@ try {
 
     // ============= ÉTAPE 6 : ENVOYER L'EMAIL =============
 
-    // [MODIF] Utilisation de l'API Outlook au lieu du SMTP
-    // $emailSent = sendTicketEmail($nom, $email, $reference, $subject, $ticket_id, $token);
-    
+    // [MODIF] Utilisation de l'API locale (Python) mise à jour pour être silencieuse
     $emailSent = sendTicketEmailViaLocalAPI($nom, $email, $reference, $subject, $ticket_id, $token, $uploadedFiles);
+    
+    // Ancien envoi SMTP direct désactivé
+    // $emailSent = sendTicketEmail($nom, $email, $reference, $subject, $ticket_id, $token, $uploadedFiles);
 
     // ============= ÉTAPE 7 : RÉPONSE DE SUCCÈS =============
 
@@ -375,7 +373,15 @@ try {
         $pdo->rollBack();
     }
 
-    $response['message'] = 'Erreur lors de la création du ticket: ' . $e->getMessage();
+    $response['message'] = 'Erreur base de données: ' . $e->getMessage();
+    http_response_code(500);
+} catch (Throwable $e) {
+    // Annuler la transaction en cas d'erreur critique
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+    error_log("Erreur critique script: " . $e->getMessage());
+    $response['message'] = 'Erreur serveur: ' . $e->getMessage();
     http_response_code(500);
 }
 

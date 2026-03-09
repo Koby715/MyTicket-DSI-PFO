@@ -183,14 +183,14 @@ function getStatusBadgeClass($status) {
     <nav class="pc-sidebar">
         <div class="navbar-wrapper">
             <div class="m-header sidebar-logo">
-                <a href="admin-dashboard.php" class="b-brand">
+                <a href="admin-dashboard-new.php" class="b-brand">
                     <img src="../../assets/img/logo/monimage.png" alt="logo" class="logo-lg">
                 </a>
             </div>
             <div class="navbar-content">
                 <ul class="pc-navbar mt-2">
                     <li class="pc-item">
-                        <a href="admin-dashboard.php" class="pc-link">
+                        <a href="admin-dashboard-new.php" class="pc-link">
                             <span class="pc-micon"><i class="ti ti-dashboard"></i></span>
                             <span class="pc-mtext">Dashboard</span>
                         </a>
@@ -201,8 +201,8 @@ function getStatusBadgeClass($status) {
                     <li class="pc-item pc-hasmenu">
                         <a href="#!" class="pc-link"><span class="pc-micon"><i class="ti ti-ticket"></i></span><span class="pc-mtext">Tickets</span><span class="pc-arrow"><i data-feather="chevron-right"></i></span></a>
                         <ul class="pc-submenu">
-                            <li class="pc-item"><a class="pc-link" href="admin-dashboard.php?filter=all">Tous les tickets</a></li>
-                            <li class="pc-item"><a class="pc-link" href="admin-dashboard.php?filter=mine">Mes tickets</a></li>
+                            <li class="pc-item"><a class="pc-link" href="admin-dashboard-new.php?filter=all">Tous les tickets</a></li>
+                            <li class="pc-item"><a class="pc-link" href="admin-dashboard-new.php?filter=mine">Mes tickets</a></li>
                         </ul>
                     </li>
                     <li class="pc-item pc-caption">

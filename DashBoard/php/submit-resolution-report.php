@@ -13,6 +13,7 @@ header('Content-Type: application/json');
 
 // Vérification de la session
 if (!isset($_SESSION['admin_id'])) {
+    http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'Session expirée. Veuillez vous reconnecter.']);
     exit;
 }
@@ -22,6 +23,7 @@ $agent_role = $_SESSION['admin_role'] ?? 'AGENT';
 
 // Vérification de la méthode POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Méthode non autorisée.']);
     exit;
 }
@@ -33,17 +35,20 @@ try {
 
     // Validation du ticket_id
     if ($ticket_id <= 0) {
+        http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'ID de ticket invalide.']);
         exit;
     }
 
     // Validation du commentaire
     if (empty($report_content)) {
+        http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Le commentaire du rapport est obligatoire.']);
         exit;
     }
 
     if (strlen($report_content) < 10) {
+        http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Le commentaire doit contenir au moins 10 caractères.']);
         exit;
     }
@@ -54,12 +59,14 @@ try {
     $ticket = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$ticket) {
+        http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Ticket introuvable.']);
         exit;
     }
 
     // Vérification des permissions : Agent assigné OU (ADMIN/SUPERVISOR)
     if ($agent_role === 'AGENT' && intval($ticket['assigned_to']) !== intval($agent_id)) {
+        http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Accès refusé. Seul l\'agent assigné peut résoudre ce ticket.']);
         exit;
     }
@@ -71,6 +78,7 @@ try {
     $current_status = $stmt->fetchColumn();
 
     if (in_array($current_status, ['resolved', 'closed'])) {
+        http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Ce ticket est déjà résolu ou fermé.']);
         exit;
     }
@@ -79,6 +87,7 @@ try {
     $stmt = $pdo->prepare("SELECT id FROM rapports WHERE ticket_id = ?");
     $stmt->execute([$ticket_id]);
     if ($stmt->fetch()) {
+        http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Un rapport existe déjà pour ce ticket.']);
         exit;
     }
@@ -97,6 +106,7 @@ try {
         // Validation du type de fichier
         $allowed_extensions = ['pdf', 'jpg', 'jpeg', 'png'];
         if (!in_array($file_ext, $allowed_extensions)) {
+            http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Type de fichier non autorisé. Formats acceptés : PDF, JPG, PNG.']);
             exit;
         }
@@ -104,6 +114,7 @@ try {
         // Validation de la taille (5 Mo max)
         $max_size = 5 * 1024 * 1024; // 5 Mo en octets
         if ($file_size > $max_size) {
+            http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Le fichier est trop volumineux. Taille maximale : 5 Mo.']);
             exit;
         }
@@ -120,6 +131,7 @@ try {
 
         // Upload du fichier
         if (!move_uploaded_file($file_tmp, $upload_path)) {
+            http_response_code(500);
             echo json_encode(['success' => false, 'message' => 'Erreur lors de l\'upload du fichier.']);
             exit;
         }
@@ -150,13 +162,20 @@ try {
         // Commit de la transaction
         $pdo->commit();
 
-        // Envoyer la notification email de changement de statut
-        sendStatusUpdateEmail($ticket_id, $pdo);
+        // Envoyer la notification email de changement de statut (capturer les erreurs)
+        try {
+            sendStatusUpdateEmail($ticket_id, $pdo);
+        } catch (Throwable $emailErr) {
+            error_log("Erreur notification email résolution (ticket $ticket_id): " . $emailErr->getMessage());
+            // On continue malgré l'erreur d'email, le rapport a été enregistré
+        }
 
+        http_response_code(200);
         echo json_encode([
             'success' => true,
             'message' => 'Rapport soumis et ticket #' . $ticket['reference'] . ' résolu avec succès !'
         ]);
+        exit;
 
     }
     catch (Exception $e) {
@@ -169,15 +188,20 @@ try {
         }
 
         error_log("Erreur transaction rapport: " . $e->getMessage());
+        http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Erreur lors de l\'enregistrement du rapport.']);
+        exit;
     }
 
 }
 catch (PDOException $e) {
     error_log("Erreur PDO submit-resolution-report: " . $e->getMessage());
+    http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Erreur de base de données.']);
+    exit;
 }
 catch (Exception $e) {
     error_log("Erreur submit-resolution-report: " . $e->getMessage());
+    http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Une erreur est survenue.']);
-}
+    exit;}

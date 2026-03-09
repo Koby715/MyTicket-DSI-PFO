@@ -5,13 +5,96 @@
  */
 
 /**
- * Envoie un email de changement de statut via l'API Outlook locale
+ * Appel à l'API locale (Python) pour l'envoi d'email
+ */
+function callEmailAPI($to, $subject, $body, $attachments = []) {
+    // Utiliser la configuration pour l'URL de l'API et la clé (sécurisée via .env)
+    try {
+        $emailConfig = require(__DIR__ . '/../config/email-config.php');
+        $apiUrl = $emailConfig['mail_api_url'] ?? 'http://127.0.0.1:8000/send-mail';
+        $apiKey = $emailConfig['mail_api_key'] ?? null;
+
+        $data = [
+            'to' => $to,
+            'cc' => $attachments['cc'] ?? null, // On passe le CC s'il existe dans le tableau de données
+            'subject' => $subject,
+            'body' => $body,
+            'is_html' => true,
+            'attachments' => isset($attachments['files']) ? $attachments['files'] : $attachments
+        ];
+
+        $maxAttempts = 3;
+        $attempt = 0;
+
+        while ($attempt < $maxAttempts) {
+            $attempt++;
+
+            $ch = curl_init($apiUrl);
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+            $headers = ['Content-Type: application/json'];
+            if (!empty($apiKey)) {
+                $headers[] = 'Authorization: Bearer ' . $apiKey;
+            }
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10 + ($attempt - 1) * 5);
+
+            $result = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErrno = curl_errno($ch);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            if ($curlErrno) {
+                error_log("callEmailAPI: cURL error (attempt $attempt): $curlErrno - $curlError");
+            }
+
+            if ($httpCode === 200) {
+                return true;
+            }
+
+            // Log response for diagnostics
+            error_log("callEmailAPI: HTTP $httpCode (attempt $attempt) response: " . substr((string)$result, 0, 2000));
+
+            // Backoff before next attempt (simple linear backoff)
+            if ($attempt < $maxAttempts) {
+                sleep(1 * $attempt);
+            }
+        }
+
+        return false;
+    } catch (Throwable $e) {
+        error_log("Erreur critique appel API Email: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Ajoute un email à la file d'attente
+ */
+function enqueueEmail($to, $subject, $body, $attachments = [], $cc = null) {
+    global $pdo;
+    try {
+        $stmt = $pdo->prepare("INSERT INTO email_queue (recipient, cc_recipient, subject, body, attachments, status) VALUES (?, ?, ?, ?, ?, 'pending')");
+        $attachmentsJson = !empty($attachments) ? json_encode($attachments) : null;
+        return $stmt->execute([$to, $cc, $subject, $body, $attachmentsJson]);
+    } catch (Throwable $e) {
+        // Erreur probable : table manquante ou problème PDO. Log et retourner false.
+        error_log("Erreur ajout file attente email: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Envoie un email de changement de statut via l'API Locale
  */
 function sendStatusUpdateEmail($ticket_id, $pdo) {
     try {
-        // 1. Récupérer les informations du ticket, du client et du statut
+        // 1. Récupérer les informations du ticket, du client, de l'agent assigné et du statut
         $stmt = $pdo->prepare("
-            SELECT t.reference, t.nom, t.email, t.subject, t.token, s.label as status_label
+            SELECT t.reference, t.nom AS customer_name, t.email AS customer_email, t.subject, t.token, t.assigned_to, s.label as status_label, s.code as status_code
             FROM tickets t
             LEFT JOIN statuses s ON t.status_id = s.id
             WHERE t.id = ?
@@ -21,18 +104,19 @@ function sendStatusUpdateEmail($ticket_id, $pdo) {
 
         if (!$ticket) return false;
 
-        $apiUrl = 'http://127.0.0.1:8000/send-mail';
         $emailConfig = require(__DIR__ . '/../config/email-config.php');
+
         $ticketLink = $emailConfig['app_url'] . '/DashBoard/php/liste-tickets-user.php?token=' . urlencode($ticket['token']);
-        
+
         $statusLabel = $ticket['status_label'];
+        $statusCode = $ticket['status_code'] ?? '';
         $color = "#0066cc"; // Bleu par défaut
         $icon = "ℹ️";
         
-        if (strtolower($statusLabel) === 'résolu') {
+        if (strtolower($statusLabel) === 'résolu' || strtolower($statusCode) === 'resolved') {
             $color = "#28a745"; // Vert
             $icon = "✅";
-        } elseif (strtolower($statusLabel) === 'en cours') {
+        } elseif (strtolower($statusLabel) === 'en cours' || strtolower($statusCode) === 'in_progress') {
             $color = "#ffc107"; // Jaune/Orange
             $icon = "🚀";
         }
@@ -45,7 +129,7 @@ function sendStatusUpdateEmail($ticket_id, $pdo) {
                 <p style='margin:5px 0 0 0;'>Ticket #{$ticket['reference']}</p>
             </div>
             <div style='padding: 20px;'>
-                <p>Bonjour <strong>{$ticket['nom']}</strong>,</p>
+                <p>Bonjour <strong>{$ticket['customer_name']}</strong>,</p>
                 <p>Nous vous informons que votre ticket a évolué. Son nouveau statut est désormais : <strong style='color: $color;'>$statusLabel</strong>.</p>
                 <div style='background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;'>
                     <p style='margin:0;'><strong>Objet :</strong> {$ticket['subject']}</p>
@@ -61,28 +145,42 @@ function sendStatusUpdateEmail($ticket_id, $pdo) {
         </div>
         </body></html>";
 
-        // 3. Construction du Payload JSON
-        $data = [
-            'to' => $ticket['email'],
-            'subject' => "Évolution de votre ticket [{$ticket['reference']}] : $statusLabel",
-            'body' => $mailBody,
-            'is_html' => true
-        ];
+        $mailSubject = "Évolution de votre ticket [{$ticket['reference']}] : $statusLabel";
 
-        // 4. Appel cURL
-        $ch = curl_init($apiUrl);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Timeout court pour ne pas bloquer l'UX
+        // Déterminer les destinataires :
+        $toEmail = $ticket['customer_email'];
+        $ccEmail = null;
+
+        // S'il y a un agent assigné, le mettre en Cc de la notification
+        if (!empty($ticket['assigned_to'])) {
+            // Récupérer l'email de l'agent
+            $stmtAgent = $pdo->prepare("SELECT email FROM users WHERE id = ? LIMIT 1");
+            $stmtAgent->execute([$ticket['assigned_to']]);
+            $agentEmail = $stmtAgent->fetchColumn();
+            
+            if ($agentEmail && filter_var($agentEmail, FILTER_VALIDATE_EMAIL)) {
+                // On met l'agent en Cc s'il est différent du client (cas rare mais possible)
+                if (strtolower($agentEmail) !== strtolower($toEmail)) {
+                    $ccEmail = $agentEmail;
+                }
+            }
+        }
+
+        // 3. Ajout à la file d'attente (Asynchrone)
+        if (!filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
+            error_log("sendStatusUpdateEmail: adresse email client invalide={$toEmail}");
+            return false;
+        }
+
+        // Ajout direct à la table email_queue avec le champ CC
+        $queued = enqueueEmail($toEmail, $mailSubject, $mailBody, [], $ccEmail);
+        if (!$queued) {
+            error_log("sendStatusUpdateEmail: enqueue failed for {$toEmail}");
+        }
+
+        return true;
         
-        $result = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        return ($httpCode == 200);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         error_log("Erreur notification statut: " . $e->getMessage());
         return false;
     }
