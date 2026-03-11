@@ -1,0 +1,519 @@
+/**
+ * RESPONSIVE MOBILE IMPROVEMENTS
+ * ==============================
+ * Optimizations pour mobile-first responsive design
+ * Breakpoints: 320px, 480px, 768px, 992px, 1200px+
+ * À inclure APRÈS lindy-uikit.css
+ */
+
+/* ============================================
+   PHASE 1: TYPOGRAPHIE SCALABLE MOBILE-FIRST
+   ============================================ */
+
+/* Extra-small devices (320px - 479px) */
+@media (max-width: 479px) {
+  h1, .h1 {
+    font-size: clamp(24px, 6vw, 60px) !important;
+    letter-spacing: 0.3px !important;
+  }
+
+  h2, .h2 {
+    font-size: clamp(24px, 5.5vw, 50px) !important;
+    letter-spacing: 0.3px !important;
+  }
+
+  h3, .h3 {
+    font-size: clamp(20px, 4.5vw, 40px) !important;
+  }
+
+  h4, .h4 {
+    font-size: clamp(18px, 4vw, 30px) !important;
+  }
+
+  h5, .h5 {
+    font-size: clamp(16px, 3.5vw, 24px) !important;
+  }
+
+  h6, .h6 {
+    font-size: clamp(14px, 3vw, 20px) !important;
+  }
+
+  p {
+    font-size: 14px !important;
+    line-height: 22px !important;
+  }
+
+  .body-font-size {
+    font-size: 14px !important;
+  }
+
+  .font-size-sm {
+    font-size: 12px !important;
+  }
+}
+
+/* Small devices (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  h1, .h1 {
+    font-size: clamp(28px, 5vw, 65px) !important;
+  }
+
+  h2, .h2 {
+    font-size: clamp(28px, 4.5vw, 55px) !important;
+  }
+
+  h3, .h3 {
+    font-size: clamp(22px, 4vw, 42px) !important;
+  }
+
+  h4, .h4 {
+    font-size: clamp(20px, 3.5vw, 32px) !important;
+  }
+
+  p {
+    font-size: 15px !important;
+    line-height: 23px !important;
+  }
+}
+
+/* ============================================
+   PHASE 2: ESPACEMENT INTELLIGENT
+   ============================================ */
+
+/* Réduire espacement vertical excessif */
+@media (max-width: 767px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  /* Hero section padding réadapté */
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper {
+    padding: 80px 0 40px !important;
+  }
+
+  /* Hero texte spécifique */
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper h2 {
+    font-size: clamp(24px, 5.5vw, 48px) !important;
+    line-height: 1.2 !important;
+  }
+
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper h4 {
+    font-size: clamp(14px, 3vw, 18px) !important;
+  }
+
+  /* Réduire espacements utilitaires larges */
+  .mt-100, .mt-105, .mt-110, .mt-115, .mt-120 {
+    margin-top: 40px !important;
+  }
+
+  .mb-100, .mb-105, .mb-110, .mb-115, .mb-120 {
+    margin-bottom: 40px !important;
+  }
+
+  /* Espacements medium-larges adaptés */
+  .mt-80, .mt-85, .mt-90, .mt-95 {
+    margin-top: 30px !important;
+  }
+
+  .mb-80, .mb-85, .mb-90, .mb-95 {
+    margin-bottom: 30px !important;
+  }
+
+  /* Espacement paragraphes hero */
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper p {
+    padding-right: 0 !important;
+    margin-bottom: 30px !important;
+  }
+}
+
+@media (max-width: 479px) {
+  .container {
+    padding: 0 12px;
+  }
+}
+
+/* ============================================
+   PHASE 3: COMPOSANTS ADAPTATIFS
+   ============================================ */
+
+/* --- NAVBAR & HEADER --- */
+@media (max-width: 767px) {
+  /* Logo navbar réduit sur mobile */
+  .header.header-2 .navbar-brand img {
+    max-width: 120px;
+  }
+
+  .header.header-2 .navbar {
+    padding: 12px 0;
+  }
+
+  /* Hamburger menu - taille réduite */
+  .header.header-2 .navbar-toggler .toggler-icon {
+    width: 24px;
+    height: 2px;
+    margin: 4px 0;
+  }
+
+  /* Bouton connexion visible sur mobile (drawer/alternative) */
+  .header.header-2 .navbar-collapse {
+    padding: 12px 16px;
+  }
+
+  .header.header-2 .navbar-nav {
+    margin-bottom: 10px;
+  }
+
+  /* Bouton connexion mobile en largeur full */
+  .header.header-2 .navbar-collapse .button-sm.w-100 {
+    display: block;
+    width: 100%;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  /* Ajouter version mobile du bouton connexion en bas du drawer */
+  .sub-menu-bar::after {
+    content: '';
+    display: block;
+    height: 12px;
+  }
+}
+
+/* --- BOUTONS CTA --- */
+@media (max-width: 767px) {
+  /* Boutons en stack vertical sur petit écran */
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper .buttons {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper .buttons .button {
+    margin-right: 0 !important;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Bouton grande taille adapté mobile */
+  .button-lg {
+    height: 48px;
+    font-size: 16px;
+  }
+
+  .button-sm {
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .button {
+    padding: 0 16px;
+    min-width: 100px;
+  }
+}
+
+@media (min-width: 480px) and (max-width: 767px) {
+  /* Permettre 2 boutons en ligne sur tablette petite */
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper .buttons {
+    flex-direction: row;
+    gap: 12px;
+  }
+
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper .buttons .button {
+    flex: 1;
+    margin-right: 0 !important;
+  }
+}
+
+/* --- HERO IMAGE --- */
+@media (max-width: 767px) {
+  .hero-section-wrapper-2 .hero-style-2 .hero-image {
+    margin-bottom: 40px;
+  }
+
+  .hero-section-wrapper-2 .hero-style-2 .hero-image img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* --- LAYOUT COLONNE HERO --- */
+@media (max-width: 767px) {
+  .hero-section-wrapper-2 .hero-style-2 .row {
+    flex-direction: column;
+  }
+
+  .hero-section-wrapper-2 .hero-style-2 .col-lg-6 {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/* ============================================
+   PHASE 4: OPTIMISATION IMAGES
+   ============================================ */
+
+@media (max-width: 767px) {
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Lazy loading support */
+  img[loading="lazy"] {
+    background-color: #f0f0f0;
+  }
+}
+
+/* ============================================
+   ALIGNEMENTS & FLEXIBILITÉ
+   ============================================ */
+
+/* Utilitaires Bootstrap compatibles */
+.w-100 {
+  width: 100%;
+}
+
+.d-lg-none {
+  display: block;
+}
+
+.d-lg-flex {
+  display: flex;
+}
+
+/* Utilitaires responsive flexbox */
+@media (max-width: 767px) {
+  .gap-3 {
+    gap: 12px !important;
+  }
+
+  .gap-4 {
+    gap: 16px !important;
+  }
+
+  .flex-column {
+    flex-direction: column;
+  }
+
+  .justify-content-center {
+    justify-content: center;
+  }
+
+  .mt-2 {
+    margin-top: 8px;
+  }
+
+  .mt-3 {
+    margin-top: 12px;
+  }
+
+  .mb-2 {
+    margin-bottom: 8px;
+  }
+
+  /* Classes d'espacement adapté mobile */
+  .d-flex.flex-column.flex-md-row {
+    flex-direction: column;
+  }
+
+  .d-lg-none {
+    display: block !important;
+  }
+
+  .d-lg-flex {
+    display: none !important;
+  }
+
+  .d-none {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .d-flex.flex-column.flex-md-row {
+    flex-direction: row;
+  }
+
+  .d-lg-none {
+    display: none !important;
+  }
+
+  .d-lg-flex {
+    display: flex !important;
+  }
+
+  .d-none {
+    display: none;
+  }
+}
+
+@media (min-width: 992px) {
+  .d-lg-none {
+    display: none !important;
+  }
+
+  .d-lg-flex {
+    display: flex !important;
+  }
+}
+
+/* ============================================
+   TOUCHES FINALES & FIXES CRITIQUES
+   ============================================ */
+
+/* Éviter débordement horizontal */
+@media (max-width: 679px) {
+  body {
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  .container {
+    width: 100%;
+  }
+}
+
+/* Scroll-to-top button adaptation mobile */
+@media (max-width: 479px) {
+  .scroll-top {
+    width: 40px;
+    height: 40px;
+    bottom: 20px;
+    right: 20px;
+    font-size: 16px;
+  }
+}
+
+/* Preloader text lisible mobile */
+@media (max-width: 767px) {
+  .preloader .loader .spinner {
+    width: 48px;
+    margin-left: -24px;
+  }
+}
+
+/* ============================================
+   TABLET OPTIMIZATION (768px - 991px)
+   ============================================ */
+
+@media (min-width: 768px) and (max-width: 991px) {
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper {
+    padding: 120px 0 50px;
+  }
+
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper h2 {
+    font-size: clamp(32px, 4.5vw, 48px);
+  }
+
+  .button-lg {
+    height: 56px;
+  }
+}
+
+/* ============================================
+   DESKTOP OPTIMIZATION (992px+)
+   ============================================ */
+
+@media (min-width: 992px) {
+  /* Restaurer espacements desktop optimaux */
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper {
+    padding: 200px 0;
+  }
+
+  /* Boutons en ligne avec spacing */
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper .buttons {
+    flex-direction: row;
+  }
+
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper .buttons .button {
+    margin-right: 60px;
+  }
+
+  /* Logo navbar normal size */
+  .header.header-2 .navbar-brand img {
+    max-width: 180px;
+  }
+}
+
+/* Large desktop (1200px+) */
+@media (min-width: 1200px) {
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper {
+    padding: 250px 0;
+  }
+
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper p {
+    padding-right: 100px;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITÉ & UX AMÉLIORATIONS
+   ============================================ */
+
+/* Touch targets min 48x48px */
+@media (max-width: 767px) {
+  .button,
+  button,
+  a[href],
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 16px;
+  }
+
+  /* Navbar items clickables */
+  .navbar-nav .nav-item a {
+    padding: 12px 0;
+    display: block;
+  }
+}
+
+/* Focus visible pour clavier navigation */
+button:focus,
+a:focus,
+input:focus,
+textarea:focus {
+  outline: 2px solid #20307b;
+  outline-offset: 2px;
+}
+
+/* ============================================
+   ORIENTATION LANDSCAPE MOBILE
+   ============================================ */
+
+@media (max-width: 767px) and (orientation: landscape) {
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper {
+    padding: 40px 0 30px;
+  }
+
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper h2 {
+    font-size: clamp(20px, 4vw, 35px);
+  }
+
+  .hero-section-wrapper-2 .hero-style-2 .hero-content-wrapper p {
+    font-size: 13px;
+    line-height: 20px;
+  }
+
+  .button-lg {
+    height: 40px;
+  }
+}
+
+/* ============================================
+   PRINT STYLES (BONUS)
+   ============================================ */
+
+@media print {
+  .navbar-area,
+  .scroll-top,
+  .preloader {
+    display: none;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+}

@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="assets/css/LineIcons.2.0.css"/>
     <link rel="stylesheet" href="assets/css/animate.css"/>
     <link rel="stylesheet" href="assets/css/lindy-uikit.css"/>
+    <link rel="stylesheet" href="assets/css/responsive-mobile-improvements.css"/>
   </head>
   <body>
     <!-- == preloader start == -->
@@ -72,6 +73,7 @@
                         <a class="page-scroll" href="#">Pricing</a>
                       </li> -->
                     </ul>
+                    <a href="DashBoard/php/admin-login.php" class="button button-sm radius-10 d-lg-none w-100 mt-3 mb-2">Connexion</a>
                     <a href="DashBoard/php/admin-login.php" class="button button-sm radius-10 d-none d-lg-flex">Connexion</a>
                   </div>
                   <!-- navbar collapse -->
