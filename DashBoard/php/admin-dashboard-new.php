@@ -56,8 +56,8 @@ $params = [];
 // Recherche globale
 if (!empty($_GET['search'])) {
     $search = "%" . trim($_GET['search']) . "%";
-    $where_clauses[] = "(t.reference LIKE ? OR t.subject LIKE ? OR t.email LIKE ? OR t.nom LIKE ? OR u.name LIKE ?)";
-    $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search;
+    $where_clauses[] = "(t.reference LIKE ? OR t.subject LIKE ? OR t.email LIKE ? OR t.nom LIKE ? OR u.name LIKE ? OR u.service LIKE ?)";
+    $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search;
 }
 
 // Filtres simples
@@ -116,8 +116,32 @@ switch ($current_filter) {
 
 $where_sql = implode(" AND ", $where_clauses);
 
+// --- PAGINATION ---
+$items_per_page = 50;
+$current_page = max(1, intval($_GET['page'] ?? 1)); // Page minimum 1
+$offset = ($current_page - 1) * $items_per_page;
+
 // --- RÉCUPÉRATION DES TICKETS ---
 try {
+    // Requête COUNT pour le total des résultats (toutes les pages)
+    $count_sql = "SELECT COUNT(*) as total FROM tickets t
+                  LEFT JOIN categories c ON t.category_id = c.id
+                  LEFT JOIN priorities p ON t.priority_id = p.id
+                  LEFT JOIN statuses s ON t.status_id = s.id
+                  LEFT JOIN users u ON t.assigned_to = u.id
+                  WHERE $where_sql";
+    $count_stmt = $pdo->prepare($count_sql);
+    $count_stmt->execute($params); // MÊME paramètres que la requête principale
+    $total_tickets = $count_stmt->fetch()['total'];
+    $total_pages = max(1, ceil($total_tickets / $items_per_page));
+    
+    // Valider que la page demandée n'excède pas le total
+    if ($current_page > $total_pages) {
+        $current_page = $total_pages;
+        $offset = ($current_page - 1) * $items_per_page;
+    }
+    
+    // Requête principale avec LIMIT/OFFSET
     $sql = "SELECT t.*, 
                    c.name as category_name, 
                    p.name as priority_name, 
@@ -129,7 +153,8 @@ try {
             LEFT JOIN statuses s ON t.status_id = s.id
             LEFT JOIN users u ON t.assigned_to = u.id
             WHERE $where_sql
-            ORDER BY t.created_at DESC";
+            ORDER BY t.created_at DESC
+            LIMIT $items_per_page OFFSET $offset";
     
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -200,6 +225,13 @@ function getPriorityBadgeClass($priority) {
     <!-- Template CSS -->
     <link rel="stylesheet" href="../assets/css/style.css" id="main-style-link">
     <link rel="stylesheet" href="../assets/css/style-preset.css">
+    
+    <!-- Quill Rich Text Editor Styles -->
+    <link rel="stylesheet" href="../assets/css/plugins/quill.core.css">
+    <link rel="stylesheet" href="../assets/css/plugins/quill.snow.css">
+    
+    <!-- Security: DOMPurify for XSS Protection -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
     
     <style>
         :root {
@@ -349,6 +381,78 @@ function getPriorityBadgeClass($priority) {
         .badge-light-warning { background: #fef3c7; color: #b45309; }
         .badge-light-primary { background: #e0e7ff; color: #4338ca; }
         .badge-light-success { background: #dcfce7; color: #15803d; }
+
+        /* === RESPONSIVE MODALS === */
+        @media (max-width: 576px) {
+            .modal-dialog {
+                margin: 0.5rem !important;
+            }
+            .modal-content {
+                border-radius: 12px !important;
+            }
+            .modal-body {
+                padding: 1rem !important;
+            }
+            .modal-header {
+                padding: 1rem !important;
+            }
+            .modal-footer {
+                padding: 1rem !important;
+            }
+            .modal-title {
+                font-size: 1rem;
+            }
+            .form-select,
+            .form-control {
+                font-size: 16px !important;
+            }
+        }
+
+        /* Modal fullscreen sur très petits écrans */
+        @media (max-width: 420px) {
+            .modal-fullscreen-sm-down {
+                margin: 0 !important;
+            }
+            .modal-fullscreen-sm-down .modal-content {
+                border-radius: 0 !important;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+            .modal-fullscreen-sm-down .modal-body {
+                flex: 1;
+                overflow-y: auto;
+                padding: 1.5rem 1rem !important;
+            }
+        }
+
+        /* Amélioration du backdrop sur mobile */
+        @media (max-width: 576px) {
+            .modal-backdrop {
+                --bs-backdrop-opacity: 0.4 !important;
+            }
+        }
+        /* Amélioration du rendu riche dans le modal */
+        #modal-description img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 10px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        #modal-description {
+            font-family: inherit;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        .ql-container.ql-snow {
+            border: none !important;
+        }
+        .ql-editor {
+            padding: 0 !important;
+            height: auto !important;
+            min-height: auto !important;
+        }
     </style>
 </head>
 
@@ -665,7 +769,7 @@ function getPriorityBadgeClass($priority) {
             <!-- Tableau principal des tickets -->
             <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 20px;">
                 <div class="card-header bg-white border-0 py-4 px-4 d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0" style="font-weight: 700; color: #1e293b;">Liste des Tickets <small class="text-muted fw-normal f-14 ms-2">(<?= count($tickets) ?> résultats)</small></h4>
+                    <h4 class="mb-0" style="font-weight: 700; color: #1e293b;">Liste des Tickets <small class="text-muted fw-normal f-14 ms-2">(<?= $total_tickets ?> résultats au total - <?= count($tickets) ?> affichés)</small></h4>
                     <div class="d-flex gap-2">
                         <select class="form-select form-select-sm border-0 bg-light" style="width: 150px;">
                             <option>Tri par défaut</option>
@@ -816,11 +920,68 @@ function getPriorityBadgeClass($priority) {
                 </div>
                 <div class="card-footer bg-white border-0 py-3 px-4">
                     <nav class="d-flex justify-content-between align-items-center">
-                        <div class="f-13 text-muted">Affichage de <b><?= count($tickets) ?></b> tickets sur un total de <b><?= count($tickets) ?></b></div>
+                        <?php
+                        // Calcul des indices d'affichage
+                        $display_from = ($total_tickets == 0) ? 0 : (($current_page - 1) * $items_per_page) + 1;
+                        $display_to = min($current_page * $items_per_page, $total_tickets);
+                        ?>
+                        <div class="f-13 text-muted">
+                            Affichage de <b><?= $display_from ?></b> à <b><?= $display_to ?></b> 
+                            sur un total de <b><?= $total_tickets ?></b> tickets
+                            (Page <?= $current_page ?>/<?= $total_pages ?>)
+                        </div>
                         <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item disabled"><a class="page-link shadow-none border-0 bg-light me-1" href="#"><i class="ti ti-chevron-left"></i></a></li>
-                            <li class="page-item active"><a class="page-link shadow-sm border-0 rounded-pill mx-1" href="#">1</a></li>
-                            <li class="page-item"><a class="page-link shadow-none border-0 bg-light ms-1" href="#"><i class="ti ti-chevron-right"></i></a></li>
+                            <!-- Bouton Précédent -->
+                            <?php if ($current_page > 1): ?>
+                                <li class="page-item">
+                                    <a class="page-link shadow-none border-0 bg-light me-1" href="?<?= http_build_query(array_merge($_GET, ['page' => $current_page - 1])) ?>">
+                                        <i class="ti ti-chevron-left"></i>
+                                    </a>
+                                </li>
+                            <?php else: ?>
+                                <li class="page-item disabled">
+                                    <a class="page-link shadow-none border-0 bg-light me-1" href="#"><i class="ti ti-chevron-left"></i></a>
+                                </li>
+                            <?php endif; ?>
+
+                            <!-- Pages numérotées -->
+                            <?php
+                            $range = 2; // Afficher 2 pages avant et 2 après la page actuelle
+                            $start = max(1, $current_page - $range);
+                            $end = min($total_pages, $current_page + $range);
+                            
+                            // Ajouter "..." si nécessaire avant
+                            if ($start > 1) {
+                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                            }
+                            
+                            // Générer les boutons de pages
+                            for ($p = $start; $p <= $end; $p++) {
+                                $active_class = ($p == $current_page) ? 'active' : '';
+                                $page_url = '?' . http_build_query(array_merge($_GET, ['page' => $p]));
+                                echo "<li class=\"page-item {$active_class}\">
+                                        <a class=\"page-link shadow-sm border-0 rounded-pill mx-1\" href=\"{$page_url}\">{$p}</a>
+                                      </li>";
+                            }
+                            
+                            // Ajouter "..." si nécessaire après
+                            if ($end < $total_pages) {
+                                echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                            }
+                            ?>
+
+                            <!-- Bouton Suivant -->
+                            <?php if ($current_page < $total_pages): ?>
+                                <li class="page-item">
+                                    <a class="page-link shadow-none border-0 bg-light ms-1" href="?<?= http_build_query(array_merge($_GET, ['page' => $current_page + 1])) ?>">
+                                        <i class="ti ti-chevron-right"></i>
+                                    </a>
+                                </li>
+                            <?php else: ?>
+                                <li class="page-item disabled">
+                                    <a class="page-link shadow-none border-0 bg-light ms-1" href="#"><i class="ti ti-chevron-right"></i></a>
+                                </li>
+                            <?php endif; ?>
                         </ul>
                     </nav>
                 </div>
@@ -830,8 +991,8 @@ function getPriorityBadgeClass($priority) {
     <!-- [ Main Content ] end -->
 
     <!-- Modal d'Assignation -->
-    <div class="modal fade" id="assignModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+    <div class="modal fade" id="assignModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
+        <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
                 <div class="modal-header border-0 pt-4 px-4">
                     <h5 class="modal-title fw-700">Assigner le ticket <span id="assign-ticket-ref" class="text-primary"></span></h5>
@@ -904,9 +1065,11 @@ function getPriorityBadgeClass($priority) {
                         <h5 class="fw-700" id="modal-subject"></h5>
                     </div>
 
-                    <div class="mb-4 text-break">
+                    <div class="mb-4">
                         <label class="f-11 text-muted text-uppercase fw-600 mb-2">Description</label>
-                        <div id="modal-description" class="p-3 border rounded-4 bg-white" style="min-height: 100px; white-space: pre-wrap;"></div>
+                        <div class="ql-container ql-snow border rounded-4 bg-white p-3" style="min-height: 120px;">
+                            <div id="modal-description" class="ql-editor"></div>
+                        </div>
                     </div>
 
                     <div id="modal-attachments-container" class="d-none">
@@ -1196,9 +1359,15 @@ function getPriorityBadgeClass($priority) {
                         document.getElementById('modal-user-avatar').textContent = (t.nom || '?').substring(0, 1).toUpperCase();
                         
                         document.getElementById('modal-subject').textContent = t.subject;
-                        // Enlever les balises HTML de la description (ex: <p></p>)
-                        const cleanDescription = (t.description || '').replace(/<\/?[^>]+(>|$)/g, "");
-                        document.getElementById('modal-description').textContent = cleanDescription;
+                        
+                        // Injection sécurisée (DOMPurify) du contenu riche (HTML) pour Quill
+                        const descriptionContainer = document.getElementById('modal-description');
+                        if (t.description && t.description.trim() !== "") {
+                            // Nettoyage XSS avant injection
+                            descriptionContainer.innerHTML = DOMPurify.sanitize(t.description);
+                        } else {
+                            descriptionContainer.innerHTML = '<em class="text-muted">Aucune description fournie.</em>';
+                        }
                         
                         // Pièces jointes
                         const attContainer = document.getElementById('modal-attachments-container');
@@ -1320,6 +1489,7 @@ function getPriorityBadgeClass($priority) {
         }
 
         // Export Excel (Logique intelligente : Sélection ou Filtres)
+        // IMPORTANT: Lors de la pagination, l'export doit récupérer TOUS les tickets filtrés (toutes les pages)
         function exportToExcel() {
             const checkedItems = document.querySelectorAll('.checkItem:checked');
             
@@ -1328,10 +1498,16 @@ function getPriorityBadgeClass($priority) {
                 const selectedIds = Array.from(checkedItems).map(cb => cb.value).join(',');
                 window.location.href = 'export-tickets-excel.php?ids=' + selectedIds;
             } else {
-                // Sinon, on exporte selon les filtres globaux du formulaire
-                const form = document.getElementById('filterForm');
-                const params = new URLSearchParams(new FormData(form)).toString();
-                window.location.href = 'export-tickets-excel.php?' + params;
+                // Récupérer TOUS les paramètres actuels de l'URL (filtres + pagination)
+                const currentParams = new URLSearchParams(window.location.search);
+                
+                // Supprimer le paramètre 'page' car l'export doit récupérer TOUS les résultats
+                // pas seulement ceux de la page actuelle
+                currentParams.delete('page');
+                
+                // Construire l'URL d'export avec TOUS les filtres mais SANS le paramètre de pagination
+                const exportUrl = 'export-tickets-excel.php?' + currentParams.toString();
+                window.location.href = exportUrl;
             }
         }
 
@@ -1518,3 +1694,4 @@ function getPriorityBadgeClass($priority) {
 
 
 // POWER SHELL WRITE TEST
+

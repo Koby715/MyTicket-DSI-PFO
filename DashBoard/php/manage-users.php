@@ -35,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $email = trim($_POST['email']);
                     $password = $_POST['password'];
                     $role = $_POST['role'];
+                    $service = !empty($_POST['service']) ? $_POST['service'] : null;
                     $is_active = isset($_POST['is_active']) ? 1 : 0;
 
                     if (!empty($name) && !empty($email) && !empty($password)) {
@@ -45,8 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $error = "Cet email est déjà utilisé par un autre utilisateur.";
                         } else {
                             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                            $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, is_active) VALUES (?, ?, ?, ?, ?)");
-                            $stmt->execute([$name, $email, $hashed_password, $role, $is_active]);
+                            $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role, service, is_active) VALUES (?, ?, ?, ?, ?, ?)");
+                            $stmt->execute([$name, $email, $hashed_password, $role, $service, $is_active]);
                             $message = "Utilisateur ajouté avec succès !";
                         }
                     } else {
@@ -57,12 +58,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $name = trim($_POST['name']);
                     $email = trim($_POST['email']);
                     $role = $_POST['role'];
+                    $service = !empty($_POST['service']) ? $_POST['service'] : null;
                     $is_active = isset($_POST['is_active']) ? 1 : 0;
 
                     if (!empty($id) && !empty($name) && !empty($email)) {
                         // Mise à jour des infos de base
-                        $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, role = ?, is_active = ? WHERE id = ?");
-                        $stmt->execute([$name, $email, $role, $is_active, $id]);
+                        $stmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, role = ?, service = ?, is_active = ? WHERE id = ?");
+                        $stmt->execute([$name, $email, $role, $service, $is_active, $id]);
 
                         // Mise à jour du mot de passe si renseigné
                         if (!empty($_POST['password'])) {
@@ -366,6 +368,7 @@ try {
                                             <th>UTILISATEUR</th>
                                             <th>EMAIL</th>
                                             <th>RÔLE</th>
+                                            <th>SERVICE</th>
                                             <th>STATUT</th>
                                             <th class="text-end pe-4">ACTIONS</th>
                                         </tr>
@@ -398,6 +401,15 @@ try {
                                                         </span>
                                                     </td>
                                                     <td>
+                                                        <?php if (!empty($u['service'])): ?>
+                                                            <span class="badge bg-light-info text-info px-3 py-1 rounded-pill">
+                                                                <?= htmlspecialchars($u['service']) ?>
+                                                            </span>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">-</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td>
                                                         <?php if ($u['is_active']): ?>
                                                             <span class="status-badge bg-light-success text-success">Actif</span>
                                                         <?php else: ?>
@@ -412,6 +424,7 @@ try {
                                                                         data-name="<?= htmlspecialchars($u['name']) ?>"
                                                                         data-email="<?= htmlspecialchars($u['email']) ?>"
                                                                         data-role="<?= $u['role'] ?>"
+                                                                        data-service="<?= htmlspecialchars($u['service'] ?? '') ?>"
                                                                         data-active="<?= $u['is_active'] ?>"
                                                                         data-bs-toggle="modal" 
                                                                         data-bs-target="#editModal">
@@ -473,6 +486,14 @@ try {
                                 <option value="SUPERVISOR">SUPERVISOR</option>
                             </select>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">Service</label>
+                            <select name="service" class="form-select bg-light border-0">
+                                <option value="">-- Aucun service --</option>
+                                <option value="IT Gestion">IT Gestion</option>
+                                <option value="IT Support">IT Support</option>
+                            </select>
+                        </div>
                         <div class="form-check form-switch mt-3">
                             <input class="form-check-input" type="checkbox" name="is_active" id="isActiveAdd" checked>
                             <label class="form-check-label" for="isActiveAdd">Compte actif</label>
@@ -521,6 +542,14 @@ try {
                                 <option value="AGENT">AGENT</option>
                                 <option value="ADMIN">ADMIN</option>
                                 <option value="SUPERVISOR">SUPERVISOR</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Service</label>
+                            <select name="service" id="edit-service" class="form-select bg-light border-0">
+                                <option value="">-- Aucun service --</option>
+                                <option value="IT Gestion">IT Gestion</option>
+                                <option value="IT Support">IT Support</option>
                             </select>
                         </div>
                         <div class="form-check form-switch mt-3">
@@ -585,12 +614,14 @@ try {
                 var name = button.getAttribute('data-name');
                 var email = button.getAttribute('data-email');
                 var role = button.getAttribute('data-role');
+                var service = button.getAttribute('data-service');
                 var active = button.getAttribute('data-active');
                 
                 document.getElementById('edit-id').value = id;
                 document.getElementById('edit-name').value = name;
                 document.getElementById('edit-email').value = email;
                 document.getElementById('edit-role').value = role;
+                document.getElementById('edit-service').value = service;
                 document.getElementById('edit-active').checked = (active == 1);
             });
 

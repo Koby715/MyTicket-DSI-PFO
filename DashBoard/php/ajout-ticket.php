@@ -69,6 +69,12 @@
             <span class="pc-mtext">Accueil</span>
           </a>
         </li>
+        <li class="pc-item">
+          <a href="admin-dashboard-new.php" class="pc-link">
+            <span class="pc-micon"><i class="ti ti-list"></i></span>
+            <span class="pc-mtext">Tableau de bord</span>
+          </a>
+        </li>
       </ul>
       <!-- <div class="card text-center">
         <div class="card-body">

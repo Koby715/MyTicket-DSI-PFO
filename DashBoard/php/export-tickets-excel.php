@@ -25,8 +25,8 @@ if (!empty($_GET['ids'])) {
     // Filtres habituels
     if (!empty($_GET['search'])) {
         $search = "%" . trim($_GET['search']) . "%";
-        $where_clauses[] = "(t.reference LIKE ? OR t.subject LIKE ? OR t.email LIKE ? OR t.nom LIKE ? OR u.name LIKE ?)";
-        $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search;
+        $where_clauses[] = "(t.reference LIKE ? OR t.subject LIKE ? OR t.email LIKE ? OR t.nom LIKE ? OR u.name LIKE ? OR u.service LIKE ?)";
+        $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search; $params[] = $search;
     }
     if (!empty($_GET['status'])) {
         $where_clauses[] = "t.status_id = ?";
@@ -52,6 +52,12 @@ if (!empty($_GET['ids'])) {
 
 $where_sql = implode(" AND ", $where_clauses);
 
+// DEBUG LOG
+$debug_log = "DEBUG LOG - " . date('Y-m-d H:i:s') . "\n";
+$debug_log .= "GET Parameters: " . json_encode($_GET) . "\n";
+$debug_log .= "Where Clauses: " . json_encode($where_clauses) . "\n";
+$debug_log .= "Params: " . json_encode($params) . "\n";
+
 try {
     $sql = "SELECT t.*, 
                    c.name as category_name, 
@@ -69,10 +75,17 @@ try {
             WHERE $where_sql
             ORDER BY t.created_at DESC";
     
+    $debug_log .= "SQL Query: " . $sql . "\n";
+    
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $tickets = $stmt->fetchAll();
+    
+    $debug_log .= "Rows returned: " . count($tickets) . "\n";
+    error_log($debug_log);
+    
 } catch (PDOException $e) {
+    error_log($debug_log . "PDO Error: " . $e->getMessage());
     exit("Erreur lors de l'export.");
 }
 
